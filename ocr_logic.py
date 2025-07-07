@@ -22,19 +22,18 @@ def extract_workout_data(image):
     # Best Pace
     best_pace_match = re.search(r"Best\s*km\s*([0-9]{1,2}'[0-9]{2})", text)
 
-    # Extract time specifically near "Activity Time"
+    # ==== Time logic fix ====
+
     time = "Unknown"
-    activity_time_section = re.search(r"([\d:]{4,5}).{0,10}Activity\s*Time", text)
-    if activity_time_section:
-        time = activity_time_section.group(1)
-    else:
-        # fallback: pick the first valid time not surrounded by pace-like characters
-        time_candidates = re.finditer(r"\b([0-2]?[0-9]:[0-5][0-9])\b", text)
-        for match in time_candidates:
-            context = text[max(0, match.start() - 10):match.end() + 10]
-            if "'" not in context:  # exclude pace-like strings
-                time = match.group(1)
-                break
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if "Activity Time" in line:
+            if i > 0:
+                time_line = lines[i - 1]
+                time_match = re.search(r"([0-2]?[0-9]:[0-5][0-9])", time_line)
+                if time_match:
+                    time = time_match.group(1)
+            break
 
     return {
         "distance": distance_match.group(1) + " km" if distance_match else "Unknown",
