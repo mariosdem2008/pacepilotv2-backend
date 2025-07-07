@@ -8,29 +8,28 @@ def extract_workout_data(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Fix OCR typos
+    # Fix OCR errors
     text = text.replace("’", "'").replace("”", '"').replace("“", '"')
     text = text.replace("istance", "Distance")
-    text = text.replace("km/h", "km")
+    text = text.replace("km/h", "km")  # sometimes OCR adds /h incorrectly
 
-    # Extract distance
+    # Distance
     distance_match = re.search(r"(\d+(\.\d+)?)\s*Distance", text)
 
-    # Extract average pace
+    # Average Pace: e.g. "Average 3'28"
     avg_pace_match = re.search(r"Average\s*([0-9]{1,2}'[0-9]{2})", text)
 
-    # Extract best pace
+    # Best Pace: e.g. "Best km 3'19"
     best_pace_match = re.search(r"Best\s*km\s*([0-9]{1,2}'[0-9]{2})", text)
 
-    # Extract valid times (with ":" only, not with "'")
-    time_matches = re.finditer(r"\b([0-2]?[0-9]:[0-5][0-9])\b", text)
+    # Time: find a clean time with ":" that’s not part of a pace (which has "'")
     time = "Unknown"
-    for match in time_matches:
-        # Check surrounding context
-        context = text[max(0, match.start() - 30):match.end() + 30]
-        if "'" not in context:  # avoid pace
+    time_candidates = list(re.finditer(r"\b([0-2]?[0-9]:[0-5][0-9])\b", text))
+    for match in time_candidates:
+        context = text[max(0, match.start() - 10):match.end() + 10]
+        if "'" not in context:  # not part of a pace
             time = match.group(1)
-            break  # use first valid time
+            break
 
     return {
         "distance": distance_match.group(1) + " km" if distance_match else "Unknown",
