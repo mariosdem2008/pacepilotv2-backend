@@ -9,8 +9,9 @@ app = FastAPI()
 def read_root():
     return {"message": "PacePilot Screenshot OCR Backend"}
 
-app.post("/analyze-screenshot")
+@app.post("/analyze-screenshot")
 async def analyze_screenshot(file: UploadFile = File(...)):
+    ...
     print(f"Received file: {file.filename}")
     image = Image.open(io.BytesIO(await file.read()))
     print("Image loaded")
