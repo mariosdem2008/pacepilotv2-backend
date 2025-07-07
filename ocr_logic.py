@@ -12,16 +12,13 @@ def extract_workout_data(image):
     text = text.replace("’", "'").replace("”", '"').replace("“", '"')
     text = text.replace("istance", "Distance")
     text = text.replace("km/h", "km")  # sometimes OCR adds /h incorrectly
-    # Also fix this common OCR bug (optional)
-    text = text.replace("328 /km", "3'28\"/km")
-    text = text.replace("319 /km", "3'19\"/km")
-
+    
 
     # Distance (look for number before the word "Distance")
     distance_match = re.search(r"(\d+(\.\d+)?)\s*Distance", text)
 
-    # Time: find something like 17:10
-    time_match = re.search(r"(?:Activity\s+Time.*?)([0-2]?[0-9]:[0-5][0-9])", text, re.I)
+    # Try to find time next to "Activity Time" or just any valid time format
+    time_match = re.search(r"(?:Activity\s+Time.*?)?([0-2]?[0-9]:[0-5][0-9])", text, re.I)
 
     # Average Pace: something like "Average 3'28"
     avg_pace_match = re.search(r"Average\s*([0-9]{1,2}'[0-9]{2})", text)
