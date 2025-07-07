@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
-echo "Starting build script..."
+# Install Tesseract during the build phase
 apt-get update && apt-get install -y tesseract-ocr
-echo "Tesseract installed."
+
+# Proceed with Python dependencies
+pip install -r requirements.txt
