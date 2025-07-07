@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: pacepilot-backend
+    env: docker
+    plan: free
+    region: oregon
+    dockerfilePath: Dockerfile
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
