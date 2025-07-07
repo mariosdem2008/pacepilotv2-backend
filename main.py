@@ -21,4 +21,4 @@ async def analyze_screenshot(file: UploadFile = File(...)):
         return {"status": "ok", "workout": data}
     except Exception as e:
         print("ERROR:", e)
-        return {"status": "error", "message": str(e)}
+        return {"status": "error", "message": str(e)}      

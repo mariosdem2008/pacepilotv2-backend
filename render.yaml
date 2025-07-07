@@ -1,7 +1,0 @@
-services:
-  - type: web
-    name: pacepilot-backend
-    env: python
-    buildCommand: ./render-build.sh && pip install -r requirements.txt
-    startCommand: uvicorn main:app --host 0.0.0.0 --port 10000
-    plan: free
