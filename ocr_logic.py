@@ -8,10 +8,8 @@ def extract_workout_data(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Fix OCR artifacts
     text = text.replace("’", "'").replace("”", '"').replace("“", '"')
-    text = text.replace("istance", "Distance")
-    text = text.replace("km/h", "km")
+    text = text.replace("istance", "Distance").replace("km/h", "km")
 
     # Distance
     distance_match = re.search(r"(\d+(\.\d+)?)\s*Distance", text)
@@ -22,7 +20,7 @@ def extract_workout_data(image):
     # Best pace
     best_pace_match = re.search(r"Best\s*km\s*([0-9]{1,2}'[0-9]{2})", text)
 
-    # Time from line before "Activity Time"
+    # Time extraction logic
     time = "Unknown"
     lines = text.splitlines()
     for i, line in enumerate(lines):
@@ -33,11 +31,10 @@ def extract_workout_data(image):
                     time = match.group(1)
             break
 
-    # Extract splits
+    # Splits extraction
     splits = []
     for line in lines:
-        # Match example: "1 1.00 km 3:24.23 3'24" /km"
-        match = re.match(r"\s*\d+\s+(\d\.\d{2})\s*km\s+(\d{1,2}:\d{2})[\.:]\d{1,2}\s+(\d{1,2}'\d{2})", line)
+        match = re.match(r"\s*\d+\s+(\d\.\d{2})\s*km\s+(\d{1,2}:\d{2})[\.:]?\d{0,2}?\s+(\d{1,2}'\d{2})", line)
         if match:
             dist, split_time, pace = match.groups()
             splits.append({
@@ -46,10 +43,26 @@ def extract_workout_data(image):
                 "pace": f"{pace}/km"
             })
 
+    # Heart rate
+    hr_avg_match = re.search(r"Average\s+(\d{2,3})", text)
+    hr_max_match = re.search(r"Max\s+(\d{2,3})", text)
+
+    # Cadence
+    cadence_avg_match = re.search(r"Average\s+(\d{2,3})", text)
+    cadence_max_match = re.search(r"Max\s+(\d{2,3})", text)
+
+    # Stride Length
+    stride_length_avg_match = re.search(r"Stride Length.*?Average\s+(\d{2,3})", text, re.DOTALL)
+
     return {
         "distance": distance_match.group(1) + " km" if distance_match else "Unknown",
         "time": time,
         "pace": avg_pace_match.group(1) + "/km" if avg_pace_match else "Unknown",
         "best_pace": best_pace_match.group(1) + "/km" if best_pace_match else "Unknown",
-        "splits": splits
+        "splits": splits,
+        "avg_hr": hr_avg_match.group(1) if hr_avg_match else None,
+        "max_hr": hr_max_match.group(1) if hr_max_match else None,
+        "cadence_avg": cadence_avg_match.group(1) if cadence_avg_match else None,
+        "cadence_max": cadence_max_match.group(1) if cadence_max_match else None,
+        "stride_length_avg": stride_length_avg_match.group(1) if stride_length_avg_match else None
     }
