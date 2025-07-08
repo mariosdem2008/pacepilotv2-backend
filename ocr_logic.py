@@ -22,8 +22,7 @@ def extract_workout_data(image):
     # Best Pace
     best_pace_match = re.search(r"Best\s*km\s*([0-9]{1,2}'[0-9]{2})", text)
 
-    # ==== Time logic fix ====
-
+    # Extract time from line before "Activity Time"
     time = "Unknown"
     lines = text.splitlines()
     for i, line in enumerate(lines):
@@ -35,9 +34,23 @@ def extract_workout_data(image):
                     time = time_match.group(1)
             break
 
+    # Extract splits
+    splits = []
+    split_pattern = re.findall(
+        r"(\d\.\d{2})\s*km\s*[–\-]?\s*([0-9]{1,2}:[0-9]{2})\s*[–\-]?\s*([0-9]{1,2}'[0-9]{2})",
+        text
+    )
+    for dist, split_time, pace in split_pattern:
+        splits.append({
+            "distance": f"{dist} km",
+            "time": split_time,
+            "pace": f"{pace}/km"
+        })
+
     return {
         "distance": distance_match.group(1) + " km" if distance_match else "Unknown",
         "time": time,
         "pace": avg_pace_match.group(1) + "/km" if avg_pace_match else "Unknown",
-        "best_pace": best_pace_match.group(1) + "/km" if best_pace_match else "Unknown"
+        "best_pace": best_pace_match.group(1) + "/km" if best_pace_match else "Unknown",
+        "splits": splits
     }
