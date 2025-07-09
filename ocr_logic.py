@@ -15,7 +15,14 @@ def extract_workout_data(image):
     lines = text.splitlines()
 
     # Distance
-    distance_match = re.search(r"(\d+(\.\d+)?)\s*Distance", text)
+    distance_match = re.findall(r"\b(\d+\.\d+|\d+)\s*km\b", text)
+    distance = "Unknown"
+    if distance_match:
+        # Convert all matches to float and get the largest one
+        numeric_distances = [float(d) for d in distance_match]
+        max_distance = max(numeric_distances)
+        distance = f"{max_distance:.2f} km"
+
 
     # Time (look for line above "Activity Time")
     time = "Unknown"
