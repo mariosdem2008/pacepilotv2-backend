@@ -66,7 +66,7 @@ def extract_workout_data(image):
     stride_length_avg = stride_match.group(1) if stride_match else None
 
     return {
-        "distance": distance_match.group(1) + " km" if distance_match else "Unknown",
+        "distance": distance,
         "time": time,
         "pace": avg_pace_match.group(1) + "/km" if avg_pace_match else "Unknown",
         "best_pace": best_pace_match.group(1) + "/km" if best_pace_match else "Unknown",
@@ -77,3 +77,4 @@ def extract_workout_data(image):
         "cadence_max": cadence_max,
         "stride_length_avg": stride_length_avg
     }
+
