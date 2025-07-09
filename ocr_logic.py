@@ -29,13 +29,16 @@ def extract_workout_data(image):
         print(f"Matched Distance with 'Distance' label: {value}")
         distance_values.append(value)
 
-    # 2. Fallback: Search all lines for something that looks like a distance near "km"
+    # 2. Fallback: Search lines for potential distance values (filter out paces)
     for line in lines:
+        if any(term in line.lower() for term in ["pace", "'", "avg", "best"]):
+            continue  # Skip lines that likely contain pace, not distance
+
         match = re.search(r"(\d+(?:\.\d{1,2})?)\s*/?\s*km", line, re.IGNORECASE)
         if match:
             value = float(match.group(1))
-            print(f"Found distance candidate: {value} from line: '{line}'")
             if value > 0.3:
+                print(f"Found distance candidate: {value} from line: '{line}'")
                 distance_values.append(value)
 
     if distance_values:
