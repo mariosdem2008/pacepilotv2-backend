@@ -25,21 +25,21 @@ def extract_workout_data(image):
     # 1. Check standard pattern like "X Distance"
     distance_match = re.search(r"(\d+(\.\d+)?)\s*Distance", text)
     if distance_match:
-        distance_values.append(float(distance_match.group(1)))
+        value = float(distance_match.group(1))
+        print(f"Matched Distance with 'Distance' label: {value}")
+        distance_values.append(value)
 
     # 2. Fallback: Search all lines for something that looks like a distance near "km"
     for line in lines:
-        match = re.search(r"(\d{1,2}\.\d{1,2})\s*(?:/)?\s*km", line)
+        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*/?\s*km", line, re.IGNORECASE)
         if match:
             value = float(match.group(1))
-            # Optional: ignore tiny values like 0.01 km
+            print(f"Found distance candidate: {value} from line: '{line}'")
             if value > 0.3:
                 distance_values.append(value)
 
     if distance_values:
-        # Take the max assuming it's the total distance
         distance = f"{max(distance_values):.2f} km"
-
 
     # -------- Time (line above "Activity Time") --------
     time = "Unknown"
