@@ -18,9 +18,28 @@ def extract_workout_data(image):
     )
     lines = text.splitlines()
 
-    # -------- Distance --------
+    # -------- Distance (robust fallback) --------
+    distance = "Unknown"
+    distance_values = []
+
+    # 1. Check standard pattern like "X Distance"
     distance_match = re.search(r"(\d+(\.\d+)?)\s*Distance", text)
-    distance = f"{distance_match.group(1)} km" if distance_match else "Unknown"
+    if distance_match:
+        distance_values.append(float(distance_match.group(1)))
+
+    # 2. Fallback: Search all lines for something that looks like a distance near "km"
+    for line in lines:
+        match = re.search(r"(\d{1,2}\.\d{1,2})\s*(?:/)?\s*km", line)
+        if match:
+            value = float(match.group(1))
+            # Optional: ignore tiny values like 0.01 km
+            if value > 0.3:
+                distance_values.append(value)
+
+    if distance_values:
+        # Take the max assuming it's the total distance
+        distance = f"{max(distance_values):.2f} km"
+
 
     # -------- Time (line above "Activity Time") --------
     time = "Unknown"
