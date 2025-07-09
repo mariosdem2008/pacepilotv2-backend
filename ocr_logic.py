@@ -8,74 +8,71 @@ def extract_workout_data(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Fix OCR noise
-    text = text.replace("’", "'").replace("”", '"').replace("“", '"')
-    text = text.replace("istance", "Distance").replace("km/h", "km")
+    # Normalize for consistency
+    text = (
+        text.replace("’", "'")
+            .replace("”", '"')
+            .replace("“", '"')
+            .replace("istance", "Distance")
+            .replace("km/h", "km")
+    )
+    lines = text.splitlines()
 
-    # -------- Distance logic --------
-    km_matches = re.findall(r"(\d+\.\d+|\d+)\s*km", text)
-    distance = "Unknown"
-    if km_matches:
-        distance_context = re.search(r"(\d+\.\d+|\d+)\s*km.*?Distance", text, re.IGNORECASE)
-        if distance_context:
-            distance = f"{float(distance_context.group(1)):.2f} km"
-        else:
-            reasonable_kms = [float(km) for km in km_matches if 0 < float(km) < 15]
-            if reasonable_kms:
-                distance = f"{max(reasonable_kms):.2f} km"
+    # -------- Distance --------
+    distance_match = re.search(r"(\d+(\.\d+)?)\s*Distance", text)
+    distance = f"{distance_match.group(1)} km" if distance_match else "Unknown"
 
-    # -------- Time (Activity Time) --------
+    # -------- Time (line above "Activity Time") --------
     time = "Unknown"
-    activity_time_section = re.search(r"([\d:]{4,5}).{0,10}Activity\s*Time", text)
-    if activity_time_section:
-        time = activity_time_section.group(1)
-    else:
-        time_candidates = re.finditer(r"\b([0-2]?[0-9]:[0-5][0-9])\b", text)
-        for match in time_candidates:
-            context = text[max(0, match.start() - 10):match.end() + 10]
-            if "'" not in context:
+    for i, line in enumerate(lines):
+        if "Activity Time" in line and i > 0:
+            match = re.search(r"([0-2]?[0-9]:[0-5][0-9])", lines[i - 1])
+            if match:
                 time = match.group(1)
                 break
 
-    # -------- Pace --------
+    # -------- Avg Pace & Best Pace --------
     avg_pace_match = re.search(r"Average\s*([0-9]{1,2}'[0-9]{2})", text)
     best_pace_match = re.search(r"Best\s*km\s*([0-9]{1,2}'[0-9]{2})", text)
 
+    pace = avg_pace_match.group(1) + "/km" if avg_pace_match else "Unknown"
+    best_pace = best_pace_match.group(1) + "/km" if best_pace_match else "Unknown"
+
     # -------- Splits --------
     splits = []
-    split_lines = re.findall(r"(\d\.\d{2}|\d{1,2}\.00)\s*km\s+(\d{1,2}:\d{2})[\.:]?\d*\s+([0-9]{1,2}'[0-9]{2})", text)
-    for dist, t, p in split_lines:
-        splits.append({
-            "distance": f"{dist} km",
-            "time": t,
-            "pace": f"{p}/km"
-        })
+    for line in lines:
+        match = re.match(r"\s*\d+\s+(\d\.\d{2})\s*km\s+(\d{1,2}:\d{2})[\.:]?\d{0,2}?\s+(\d{1,2}'\d{2})", line)
+        if match:
+            dist, split_time, pace = match.groups()
+            splits.append({
+                "distance": f"{dist} km",
+                "time": split_time,
+                "pace": f"{pace}/km"
+            })
 
-    # -------- Heart rate --------
+    # -------- Heart Rate --------
     avg_hr = max_hr = None
-    hr_match = re.search(r"Heart\s*Rate.*?Max\s*(\d+)\s*Average\s*(\d+)", text, re.IGNORECASE)
+    hr_match = re.search(r"Heart Rate.*?Max\s*(\d{2,3}).*?Average\s*(\d{2,3})", text, re.IGNORECASE)
     if hr_match:
-        max_hr = hr_match.group(1)
-        avg_hr = hr_match.group(2)
+        max_hr, avg_hr = hr_match.groups()
 
     # -------- Cadence --------
     cadence_avg = cadence_max = None
-    cadence_match = re.search(r"Cadence.*?Max\s*(\d+)\s*Average\s*(\d+)", text, re.IGNORECASE)
+    cadence_match = re.search(r"Cadence.*?Max\s*(\d{2,3}).*?Average\s*(\d{2,3})", text, re.IGNORECASE)
     if cadence_match:
-        cadence_max = cadence_match.group(1)
-        cadence_avg = cadence_match.group(2)
+        cadence_max, cadence_avg = cadence_match.groups()
 
     # -------- Stride Length --------
     stride_length_avg = None
-    stride_match = re.search(r"Stride\s*Length.*?Average\s*(\d+)", text, re.IGNORECASE)
+    stride_match = re.search(r"Stride Length.*?Average\s*(\d{2,3})", text, re.IGNORECASE | re.DOTALL)
     if stride_match:
         stride_length_avg = stride_match.group(1)
 
     return {
         "distance": distance,
         "time": time,
-        "pace": avg_pace_match.group(1) + "/km" if avg_pace_match else "Unknown",
-        "best_pace": best_pace_match.group(1) + "/km" if best_pace_match else "Unknown",
+        "pace": pace,
+        "best_pace": best_pace,
         "splits": splits,
         "avg_hr": avg_hr,
         "max_hr": max_hr,
