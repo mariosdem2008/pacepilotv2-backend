@@ -20,34 +20,49 @@ def extract_workout_data(image):
 
     # -------- Distance (robust fallback) --------
     distance = "Unknown"
-    distance_values = []
+    distance_candidates = []
 
-    # 1. Primary: Check line with "Distance" label
+    # 1. Primary: Look for line with "Distance" label
     for line in lines:
         if "Distance" in line:
             match = re.search(r"(\d+(?:\.\d{1,2})?)", line)
             if match:
                 value = float(match.group(1))
                 print(f"Matched Distance with 'Distance' label: {value}")
-                distance_values.append(value)
+                distance_candidates.append((value, "label"))
 
-    # 2. Fallback: Search lines for likely distance values
-    for line in lines:
-        # Skip lines with noisy indicators
+    # 2. Fallback: scan for plausible full or broken decimal patterns
+    for i, line in enumerate(lines):
         if any(term in line.lower() for term in ["pace", "'", "avg", "best", "/km", "km/h", "%", "bpm", "kcal", "load"]):
             continue
 
-        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*(km)\b", line, re.IGNORECASE)
+        # Try direct match: e.g., "4.97 km"
+        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*km\b", line, re.IGNORECASE)
         if match:
             value = float(match.group(1))
-            # Only consider reasonable workout distances (e.g., 1–50 km)
             if 0.5 < value < 50:
-                print(f"Found distance candidate: {value} from line: '{line}'")
-                distance_values.append(value)
+                print(f"Found full decimal distance candidate: {value} from line: '{line}'")
+                distance_candidates.append((value, "full"))
 
-    # Choose the most likely value (favor labeled or lowest nonzero)
-    if distance_values:
-        distance = f"{min(distance_values):.2f} km"
+        # Try fragmented decimal match: e.g., "4 e 9 / km" => 4.97
+        if i + 1 < len(lines):
+            combined = line + " " + lines[i + 1]
+            frag_match = re.search(r"(\d)\s*[eE]\s*(\d)\s*/\s*(\d)\s*km", combined)
+            if frag_match:
+                whole, first_decimal, second_decimal = frag_match.groups()
+                try:
+                    value = float(f"{whole}.{first_decimal}{second_decimal}")
+                    if 0.5 < value < 50:
+                        print(f"Found fragmented distance: {value} from lines: '{line}' + '{lines[i+1]}'")
+                        distance_candidates.append((value, "fragmented"))
+                except ValueError:
+                    pass
+
+    # Sort by source priority: label > fragmented > full
+    if distance_candidates:
+        sorted_candidates = sorted(distance_candidates, key=lambda x: ("label", "fragmented", "full").index(x[1]))
+        distance = f"{sorted_candidates[0][0]:.2f} km"
+
 
 
     # -------- Time (line above "Activity Time") --------
