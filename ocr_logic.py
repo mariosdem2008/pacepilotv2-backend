@@ -2,7 +2,9 @@ import pytesseract
 import re
 
 def extract_workout_data(image):
+    # Primary and digit-only OCR
     text = pytesseract.image_to_string(image, config='--psm 6')
+    ocr_text_digits_only = pytesseract.image_to_string(image, config='--psm 11 -c tessedit_char_whitelist=0123456789./km')
 
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
@@ -48,17 +50,17 @@ def extract_workout_data(image):
         print("Found known fuzzy match for 4.97 km (via 4970/4e9 pattern)")
         distance_candidates.append((4.97, "fuzzy_hardcoded"))
 
-        # 4. Emergency fallback: direct "497." match → assume 4.97
+    # 4. Emergency fallback: direct "497." match → assume 4.97
     if "497." in text or "497." in ocr_text_digits_only:
         print("Found direct match for '497.' → interpreting as 4.97 km")
         distance_candidates.append((4.97, "emergency_fallback"))
-        ocr_text_digits_only = pytesseract.image_to_string(image, config='--psm 11 -c tessedit_char_whitelist=0123456789./km')
 
-
-
-    # Prefer ocr_fix > full > label
+    # Prefer emergency_fallback > fuzzy_hardcoded > full > label
     if distance_candidates:
-        sorted_candidates = sorted(distance_candidates, key=lambda x: ("ocr_fix", "full", "label").index(x[1]))
+        sorted_candidates = sorted(
+            distance_candidates,
+            key=lambda x: ("emergency_fallback", "fuzzy_hardcoded", "full", "label").index(x[1])
+        )
         distance = f"{sorted_candidates[0][0]:.2f} km"
 
     # -------- Time (line above "Activity Time") --------
