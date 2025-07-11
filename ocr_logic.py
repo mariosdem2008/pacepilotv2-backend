@@ -22,27 +22,33 @@ def extract_workout_data(image):
     distance = "Unknown"
     distance_values = []
 
-    # 1. Check standard pattern like "X Distance"
-    distance_match = re.search(r"(\d+(\.\d+)?)\s*Distance", text)
-    if distance_match:
-        value = float(distance_match.group(1))
-        print(f"Matched Distance with 'Distance' label: {value}")
-        distance_values.append(value)
-
-    # 2. Fallback: Search lines for potential distance values (filter out paces)
+    # 1. Primary: Check line with "Distance" label
     for line in lines:
-        if any(term in line.lower() for term in ["pace", "'", "avg", "best", "/km"]):
-            continue  # Skip lines that likely contain pace, not distance
+        if "Distance" in line:
+            match = re.search(r"(\d+(?:\.\d{1,2})?)", line)
+            if match:
+                value = float(match.group(1))
+                print(f"Matched Distance with 'Distance' label: {value}")
+                distance_values.append(value)
 
-        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*/?\s*km\b", line, re.IGNORECASE)
+    # 2. Fallback: Search lines for likely distance values
+    for line in lines:
+        # Skip lines with noisy indicators
+        if any(term in line.lower() for term in ["pace", "'", "avg", "best", "/km", "km/h", "%", "bpm", "kcal", "load"]):
+            continue
+
+        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*(km)\b", line, re.IGNORECASE)
         if match:
             value = float(match.group(1))
-            if 0.3 < value < 100:  # filter out values like 328
+            # Only consider reasonable workout distances (e.g., 1–50 km)
+            if 0.5 < value < 50:
                 print(f"Found distance candidate: {value} from line: '{line}'")
                 distance_values.append(value)
 
+    # Choose the most likely value (favor labeled or lowest nonzero)
     if distance_values:
-        distance = f"{max(distance_values):.2f} km"
+        distance = f"{min(distance_values):.2f} km"
+
 
     # -------- Time (line above "Activity Time") --------
     time = "Unknown"
