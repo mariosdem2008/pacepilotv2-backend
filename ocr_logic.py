@@ -1,4 +1,4 @@
-from .parsers import coros_parser, garmin_parser
+from parsers import coros_parser, garmin_parser, polar_parser, suunto_parser, apple_parser
 
 def extract_workout_data(image, source: str):
     if source == 'coros':
