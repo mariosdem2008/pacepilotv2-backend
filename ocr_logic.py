@@ -31,39 +31,36 @@ def extract_workout_data(image):
                 print(f"Matched Distance with 'Distance' label: {value}")
                 distance_candidates.append((value, "label"))
 
-    # 2. Fallback: scan for plausible full or broken decimal patterns
+    # 2. Check all lines for proper floats and known bad patterns
     for i, line in enumerate(lines):
         if any(term in line.lower() for term in ["pace", "'", "avg", "best", "/km", "km/h", "%", "bpm", "kcal", "load"]):
             continue
 
-        # Try direct match: e.g., "4.97 km"
-        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*km\b", line, re.IGNORECASE)
+        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*km\b", line)
         if match:
             value = float(match.group(1))
             if 0.5 < value < 50:
                 print(f"Found full decimal distance candidate: {value} from line: '{line}'")
                 distance_candidates.append((value, "full"))
 
-        # Try fragmented decimal match: e.g., "4 e 9 / km" => 4.97
-        if i + 1 < len(lines):
-            combined = line + " " + lines[i + 1]
-            frag_match = re.search(r"(\d)\s*[eE]\s*(\d)\s*/\s*(\d)\s*km", combined)
-            if frag_match:
-                whole, first_decimal, second_decimal = frag_match.groups()
-                try:
-                    value = float(f"{whole}.{first_decimal}{second_decimal}")
-                    if 0.5 < value < 50:
-                        print(f"Found fragmented distance: {value} from lines: '{line}' + '{lines[i+1]}'")
-                        distance_candidates.append((value, "fragmented"))
-                except ValueError:
-                    pass
+    # 3. Special case: fuzzy match for broken "4 e 9 / km" → 4.97
+    fuzzy_pattern = re.compile(r"(\d)\s*[eE]\s*(\d)\s*/\s*(\d)\s*km", re.IGNORECASE)
+    for line in lines:
+        match = fuzzy_pattern.search(line)
+        if match:
+            whole, dec1, dec2 = match.groups()
+            try:
+                value = float(f"{whole}.{dec1}{dec2}")
+                if 0.5 < value < 50:
+                    print(f"Found fuzzy OCR decimal distance: {value} from line: '{line}'")
+                    distance_candidates.append((value, "fuzzy"))
+            except:
+                continue
 
-    # Sort by source priority: label > fragmented > full
+    # Choose the best candidate: fuzzy > full > label
     if distance_candidates:
-        sorted_candidates = sorted(distance_candidates, key=lambda x: ("label", "fragmented", "full").index(x[1]))
+        sorted_candidates = sorted(distance_candidates, key=lambda x: ("fuzzy", "full", "label").index(x[1]))
         distance = f"{sorted_candidates[0][0]:.2f} km"
-
-
 
     # -------- Time (line above "Activity Time") --------
     time = "Unknown"
