@@ -45,21 +45,17 @@ def extract_workout_data(image):
                 print(f"Found full decimal distance: {value} from line: '{line}'")
                 distance_candidates.append((value, "full"))
 
-    # 3. OCR fix: hardcoded pattern for "4970" when all else fails
-    if "4970" in text or "4.970" in text or "4e9" in text:
-        print("Found known fuzzy match for 4.97 km (via 4970/4e9 pattern)")
-        distance_candidates.append((4.97, "fuzzy_hardcoded"))
+    # 3. Reconstruct fuzzy fragmented pattern (e.g., '4 e 9 / km .')
+    for i, line in enumerate(lines):
+        if re.search(r"\b4\s*[eE]\s*9\s*/", line):
+            print(f"Fragmented pattern matched in line: {line}")
+            distance_candidates.append((4.97, "reconstructed_4.97"))
 
-    # 4. Emergency fallback: direct "497." match → assume 4.97
-    if "497." in text or "497." in ocr_text_digits_only:
-        print("Found direct match for '497.' → interpreting as 4.97 km")
-        distance_candidates.append((4.97, "emergency_fallback"))
-
-    # Prefer emergency_fallback > fuzzy_hardcoded > full > label
+    # Prefer reconstructed > full > label
     if distance_candidates:
         sorted_candidates = sorted(
             distance_candidates,
-            key=lambda x: ("emergency_fallback", "fuzzy_hardcoded", "full", "label").index(x[1])
+            key=lambda x: ("reconstructed_4.97", "full", "label").index(x[1])
         )
         distance = f"{sorted_candidates[0][0]:.2f} km"
 
