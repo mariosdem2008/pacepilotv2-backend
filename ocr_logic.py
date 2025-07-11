@@ -22,7 +22,7 @@ def extract_workout_data(image):
     distance = "Unknown"
     distance_candidates = []
 
-    # 1. Primary: Look for line with "Distance" label
+    # 1. Primary: Look for "Distance" label
     for line in lines:
         if "Distance" in line:
             match = re.search(r"(\d+(?:\.\d{1,2})?)", line)
@@ -31,35 +31,36 @@ def extract_workout_data(image):
                 print(f"Matched Distance with 'Distance' label: {value}")
                 distance_candidates.append((value, "label"))
 
-    # 2. Check all lines for proper floats and known bad patterns
-    for i, line in enumerate(lines):
+    # 2. Try exact float matches
+    for line in lines:
         if any(term in line.lower() for term in ["pace", "'", "avg", "best", "/km", "km/h", "%", "bpm", "kcal", "load"]):
             continue
 
-        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*km\b", line)
+        match = re.search(r"(\d+(?:\.\d{1,2})?)\s*km", line, re.IGNORECASE)
         if match:
             value = float(match.group(1))
             if 0.5 < value < 50:
-                print(f"Found full decimal distance candidate: {value} from line: '{line}'")
+                print(f"Found full decimal distance: {value} from line: '{line}'")
                 distance_candidates.append((value, "full"))
 
-    # 3. Special case: fuzzy match for broken "4 e 9 / km" → 4.97
-    fuzzy_pattern = re.compile(r"(\d)\s*[eE]\s*(\d)\s*/\s*(\d)\s*km", re.IGNORECASE)
+    # 3. OCR fix: look for patterns like 4970 (which could be 4.97 km)
     for line in lines:
-        match = fuzzy_pattern.search(line)
+        match = re.search(r"\b(\d{3,4})\b", line)
         if match:
-            whole, dec1, dec2 = match.groups()
-            try:
-                value = float(f"{whole}.{dec1}{dec2}")
-                if 0.5 < value < 50:
-                    print(f"Found fuzzy OCR decimal distance: {value} from line: '{line}'")
-                    distance_candidates.append((value, "fuzzy"))
-            except:
-                continue
+            raw = match.group(1)
+            # Convert 4970 -> 4.97, 3970 -> 3.97 etc.
+            if len(raw) == 4 and raw[0] in "123456789":
+                try:
+                    value = float(f"{raw[0]}.{raw[1:]}")
+                    if 0.5 < value < 50:
+                        print(f"Found OCR-decoded decimal distance: {value} from raw: '{raw}' in line: '{line}'")
+                        distance_candidates.append((value, "ocr_fix"))
+                except ValueError:
+                    continue
 
-    # Choose the best candidate: fuzzy > full > label
+    # Prefer ocr_fix > full > label
     if distance_candidates:
-        sorted_candidates = sorted(distance_candidates, key=lambda x: ("fuzzy", "full", "label").index(x[1]))
+        sorted_candidates = sorted(distance_candidates, key=lambda x: ("ocr_fix", "full", "label").index(x[1]))
         distance = f"{sorted_candidates[0][0]:.2f} km"
 
     # -------- Time (line above "Activity Time") --------
