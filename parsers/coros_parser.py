@@ -89,6 +89,29 @@ def coros_parser(image):
         if hr_val < 60: hr_val += 100
         avg_hr = str(hr_val)
 
+
+    # === MAX HEART RATE ===
+    max_hr_match = re.search(r"Max\s+(\d{2,3})\s+Average\s+(\d{2,3})", text)
+    if max_hr_match:
+        max_hr = max_hr_match.group(1)
+        if not avg_hr:
+            avg_hr = max_hr_match.group(2)
+    else:
+        max_hr = None
+
+    # === CADENCE ===
+    cadence_avg = cadence_max = None
+    cadence_match = re.search(r"Cadence\s*@\s*Max\s*(\d{2,3})\s+Average\s+(\d{2,3})", text)
+    if cadence_match:
+        cadence_max = cadence_match.group(1)
+        cadence_avg = cadence_match.group(2)
+
+    # === STRIDE LENGTH ===
+    stride_length_avg = None
+    stride_match = re.search(r"Stride Length.*?Average\s+(\d{2,3})", text)
+    if stride_match:
+        stride_length_avg = stride_match.group(1)
+
     return {
         "distance": distance,
         "time": time,
@@ -96,8 +119,9 @@ def coros_parser(image):
         "best_pace": best_pace,
         "splits": [],
         "avg_hr": avg_hr,
-        "max_hr": None,
-        "cadence_avg": None,
-        "cadence_max": None,
-        "stride_length_avg": None
+        "max_hr": max_hr,
+        "cadence_avg": cadence_avg,
+        "cadence_max": cadence_max,
+        "stride_length_avg": stride_length_avg
     }
+
