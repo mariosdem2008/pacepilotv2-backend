@@ -29,19 +29,20 @@ def coros_parser(image):
                     distance_candidates.append((val, "label"))
                 except: pass
 
-    # Fallback: Handle "8 e 0 0 km" etc.
+    # Add support for "8 e 0 0 km" or "8 e 0 km"
     for line in lines:
         if "km" in line and not any(x in line.lower() for x in ["pace", "'", "/km", "bpm", "%"]):
-            match = re.search(r"(\d{1,2})\s*[eE., ]\s*(\d{2})\s*km", line)
-            if match:
+            # Match things like "8 e 0 0 km"
+            mashed = re.findall(r"(\d)\s*[eE., ]\s*(\d)\s*(\d{1,2})\s*km", line)
+            if mashed:
                 try:
-                    val = float(match.group(1) + "." + match.group(2))
+                    val = float(mashed[0][0] + "." + mashed[0][1] + mashed[0][2])
                     if 0.5 < val < 100:
-                        distance_candidates.append((val, "fallback"))
+                        distance_candidates.append((val, "mashed"))
                 except: pass
 
     if distance_candidates:
-        sorted_candidates = sorted(distance_candidates, key=lambda x: ("fallback", "label").index(x[1]))
+        sorted_candidates = sorted(distance_candidates, key=lambda x: ("mashed", "fallback", "label").index(x[1]))
         distance = f"{sorted_candidates[0][0]:.2f} km"
 
     # === TIME ===
@@ -51,13 +52,12 @@ def coros_parser(image):
             for j in [i - 1, i]:
                 if j < 0 or j >= len(lines): continue
 
-                # Standard pattern
                 match = re.search(r"([0-9]{1,2}[:.][0-9]{2}(?:[:.][0-9]{2})?)", lines[j])
                 if match:
                     time = match.group(1).replace(".", ":")
                     break
 
-                # Mashed digits pattern like "4021197"
+                # Handle mashed timestamp like "4021197"
                 digits = re.findall(r"\d{6,8}", lines[j])
                 if digits:
                     ts = digits[0]
@@ -74,12 +74,12 @@ def coros_parser(image):
     best_pace = "Unknown"
 
     avg_pace_match = re.search(r"Average\s+([0-9]{1,2}'[0-9]{2})", text)
-    best_pace_match = re.search(r"Best\s*km\s*@?\s*([0-9]{1,2}'[0-9]{2})", text)
-
     if avg_pace_match:
         pace = avg_pace_match.group(1) + "/km"
+
+    best_pace_match = re.search(r"Best km.*?(\d{1,2})[^\d]?(\d{2})", text)
     if best_pace_match:
-        best_pace = best_pace_match.group(1) + "/km"
+        best_pace = f"{best_pace_match.group(1)}'{best_pace_match.group(2)}/km"
 
     # === HEART RATE ===
     avg_hr = None
