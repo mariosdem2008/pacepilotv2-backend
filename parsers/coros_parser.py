@@ -29,10 +29,8 @@ def coros_parser(image):
                     distance_candidates.append((val, "label"))
                 except: pass
 
-    # Add support for "8 e 0 0 km" or "8 e 0 km"
     for line in lines:
         if "km" in line and not any(x in line.lower() for x in ["pace", "'", "/km", "bpm", "%"]):
-            # Match things like "8 e 0 0 km"
             mashed = re.findall(r"(\d)\s*[eE., ]\s*(\d)\s*(\d{1,2})\s*km", line)
             if mashed:
                 try:
@@ -51,13 +49,10 @@ def coros_parser(image):
         if "Activity Time" in line:
             for j in [i - 1, i]:
                 if j < 0 or j >= len(lines): continue
-
                 match = re.search(r"([0-9]{1,2}[:.][0-9]{2}(?:[:.][0-9]{2})?)", lines[j])
                 if match:
                     time = match.group(1).replace(".", ":")
                     break
-
-                # Handle mashed timestamp like "4021197"
                 digits = re.findall(r"\d{6,8}", lines[j])
                 if digits:
                     ts = digits[0]
@@ -68,6 +63,14 @@ def coros_parser(image):
                             time = f"{minutes}:{seconds:02d}"
                             break
                     except: pass
+
+    # Fallback time detection
+    if time == "Unknown":
+        for line in lines:
+            match = re.search(r"\b([0-9]{1,2}[:.][0-9]{2})[\"”]?\s+([0-9]{1,2}[:.][0-9]{2})[\"”]?", line)
+            if match:
+                time = match.group(1).replace(".", ":")
+                break
 
     # === PACE ===
     pace = "Unknown"
@@ -88,7 +91,6 @@ def coros_parser(image):
         hr_val = int(hr_match.group(1))
         if hr_val < 60: hr_val += 100
         avg_hr = str(hr_val)
-
 
     # === MAX HEART RATE ===
     max_hr_match = re.search(r"Max\s+(\d{2,3})\s+Average\s+(\d{2,3})", text)
@@ -112,16 +114,25 @@ def coros_parser(image):
     if stride_match:
         stride_length_avg = stride_match.group(1)
 
+    # === SPLITS ===
+    splits = []
+    for line in lines:
+        match = re.match(r"^\s*(\d+)\s+1\.00\s*km\s+[\d:.]+\s+(\d{1,2}'\d{2})", line)
+        if match:
+            km = int(match.group(1))
+            split_pace = match.group(2).replace("’", "'").replace("`", "'")
+            splits.append({"km": km, "time": split_pace})
+
+    # === RETURN ===
     return {
         "distance": distance,
         "time": time,
         "pace": pace,
         "best_pace": best_pace,
-        "splits": [],
+        "splits": splits,
         "avg_hr": avg_hr,
         "max_hr": max_hr,
         "cadence_avg": cadence_avg,
         "cadence_max": cadence_max,
         "stride_length_avg": stride_length_avg
     }
-
