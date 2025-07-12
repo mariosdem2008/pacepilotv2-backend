@@ -5,12 +5,12 @@ import re
 def coros_parser(image):
     text = pytesseract.image_to_string(image, config='--psm 6')
     ocr_text_digits_only = pytesseract.image_to_string(image, config='--psm 11 -c tessedit_char_whitelist=0123456789./km')
-    
+
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Normalize
+    # === Normalize ===
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
     text = text.replace("istance", "Distance").replace("km/h", "km")
     lines = text.splitlines()
@@ -29,7 +29,7 @@ def coros_parser(image):
                     distance_candidates.append((val, "label"))
                 except: pass
 
-    # More liberal check for 'X.XX km' format
+    # Fallback: Handle "8 e 0 0 km" etc.
     for line in lines:
         if "km" in line and not any(x in line.lower() for x in ["pace", "'", "/km", "bpm", "%"]):
             match = re.search(r"(\d{1,2})\s*[eE., ]\s*(\d{2})\s*km", line)
@@ -46,16 +46,28 @@ def coros_parser(image):
 
     # === TIME ===
     time = "Unknown"
-    # Check for nearby cluster before or after 'Activity Time'
     for i, line in enumerate(lines):
         if "Activity Time" in line:
-            # Check previous and same line for mm:ss or hh:mm:ss patterns
-            for j in [i-1, i]:
+            for j in [i - 1, i]:
                 if j < 0 or j >= len(lines): continue
+
+                # Standard pattern
                 match = re.search(r"([0-9]{1,2}[:.][0-9]{2}(?:[:.][0-9]{2})?)", lines[j])
                 if match:
                     time = match.group(1).replace(".", ":")
                     break
+
+                # Mashed digits pattern like "4021197"
+                digits = re.findall(r"\d{6,8}", lines[j])
+                if digits:
+                    ts = digits[0]
+                    try:
+                        minutes = int(ts[:2])
+                        seconds = int(ts[2:4])
+                        if 0 <= minutes <= 99 and 0 <= seconds < 60:
+                            time = f"{minutes}:{seconds:02d}"
+                            break
+                    except: pass
 
     # === PACE ===
     pace = "Unknown"
