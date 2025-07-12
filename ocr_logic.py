@@ -7,3 +7,4 @@ def extract_workout_data(image, source: str):
         return garmin_parser(image)
     else:
         raise ValueError(f"Unsupported source: {source}")
+    print("[OCR DEBUG]", ocr_text)
