@@ -4,6 +4,11 @@ from PIL import Image
 import io
 
 app = FastAPI()
+@app.get("/ping")
+def ping():
+    print("🏓 PING received")
+    return {"status": "alive"}
+print("✅ Backend started: This file is running.")
 
 @app.get("/")
 def read_root():
