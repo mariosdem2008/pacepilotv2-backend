@@ -41,12 +41,13 @@ def coros_parser(image):
     # === SPLITS ===
     splits = []
     for line in lines:
-        # Match: "1 1.00 km 4:57.59 4'58" /km"
-        match = re.match(r"^\s*(\d+)\s+1\.00\s*km\s+[\d:.]+\s+(\d{1,2}'\d{2})", line)
+        # Match: "5 0.96 km 3:12.14 3'20" /km" or similar
+        match = re.match(r"^\s*(\d+)\s+(\d+\.\d+)\s*km\s+[\d:.]+\s+(\d{1,2}'\d{2})", line)
         if match:
-            km = int(match.group(1))
-            pace = match.group(2).replace("’", "'").replace("`", "'")
+            km = float(match.group(2))
+            pace = match.group(3).replace("’", "'").replace("`", "'")
             splits.append({"km": km, "time": pace})
+
 
     # === Final output ===
     return {
