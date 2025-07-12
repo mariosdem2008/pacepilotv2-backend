@@ -25,3 +25,5 @@ async def analyze_screenshot(
         return {"status": "ok", "workout": data}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+        return JSONResponse(status_code=500, content={"status": "error", "message": str(e)})
+

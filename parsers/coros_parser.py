@@ -4,6 +4,7 @@ import pytesseract, re
 def coros_parser(image):
     text = pytesseract.image_to_string(image, config='--psm 6')
     ocr_text_digits_only = pytesseract.image_to_string(image, config='--psm 11 -c tessedit_char_whitelist=0123456789./km')
+    print("OCR Text:", text)
     text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("istance", "Distance").replace("km/h", "km")
     lines = text.splitlines()
 
