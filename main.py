@@ -5,7 +5,7 @@ import io
 
 app = FastAPI()
 
-@app.get("/")
+@app.post("/")
 def read_root():
     return {"message": "PacePilot Screenshot OCR Backend"}
 
