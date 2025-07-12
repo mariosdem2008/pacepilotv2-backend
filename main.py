@@ -9,7 +9,6 @@ app = FastAPI()
 def read_root():
     return {"message": "PacePilot Screenshot OCR Backend"}
 
-
 @app.post("/analyze-screenshot")
 async def analyze_screenshot(
     file: UploadFile = File(...),

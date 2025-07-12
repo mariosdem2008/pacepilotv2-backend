@@ -47,7 +47,6 @@ def coros_parser(image):
     pace = avg_pace_match.group(1) + "/km" if avg_pace_match else "Unknown"
     best_pace = best_pace_match.group(1) + "/km" if best_pace_match else "Unknown"
 
-    
     return {
         "distance": distance,
         "time": time,
