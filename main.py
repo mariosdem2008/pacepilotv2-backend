@@ -5,9 +5,16 @@ import io
 
 app = FastAPI()
 
-@app.post("/")
+@app.get("/")
 def read_root():
     return {"message": "PacePilot Screenshot OCR Backend"}
+@app.post("/analyze-screenshot")
+async def analyze_screenshot(file: UploadFile = File(...), source: str = Form(...)):
+    print("🔥 HIT /analyze-screenshot")
+    print("➡️ Source:", source)
+    print("📎 Filename:", file.filename)
+    # Run parsing logic here
+    return {"workout": {"distance": "5.00 km", "time": "25:00", "pace": "5'00\"/km"}}  # dummy
 
 @app.post("/analyze-screenshot")
 async def analyze_screenshot(
