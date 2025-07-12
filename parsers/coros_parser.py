@@ -10,7 +10,7 @@ def coros_parser(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Normalize quotes and common OCR confusions
+    # Normalize
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
     text = text.replace("istance", "Distance").replace("km/h", "km")
     lines = text.splitlines()
@@ -19,60 +19,50 @@ def coros_parser(image):
     distance = "Unknown"
     distance_candidates = []
 
-    # 1. Layout 1: "Distance" label
     for line in lines:
         if "Distance" in line:
-            match = re.search(r"(\d+(?:[.,]\d{1,2})?)", line)
+            match = re.search(r"(\d+[.,e ]\d{1,2})", line)
             if match:
-                val = float(match.group(1).replace(",", "."))
-                distance_candidates.append((val, "label"))
+                raw = match.group(1).replace("e", ".").replace(",", ".").replace(" ", "")
+                try:
+                    val = float(raw)
+                    distance_candidates.append((val, "label"))
+                except: pass
 
-    # 2. Layout 2: Any line with a valid "km" and no pace/HR info
+    # More liberal check for 'X.XX km' format
     for line in lines:
-        if any(x in line.lower() for x in ["pace", "'", "/km", "bpm", "%", "effort"]): continue
-        match = re.search(r"\b(\d+(?:[.,]\d{1,2})?)\s*km\b", line)
-        if match:
-            val = float(match.group(1).replace(",", "."))
-            if 0.5 < val < 100:
-                distance_candidates.append((val, "full"))
-
-    # 3. Known reconstruction (e.g. 4 e 9 → 4.97)
-    for line in lines:
-        if re.search(r"\b4\s*[eE]\s*9\s*/", line):
-            distance_candidates.append((4.97, "reconstructed_4.97"))
+        if "km" in line and not any(x in line.lower() for x in ["pace", "'", "/km", "bpm", "%"]):
+            match = re.search(r"(\d{1,2})\s*[eE., ]\s*(\d{2})\s*km", line)
+            if match:
+                try:
+                    val = float(match.group(1) + "." + match.group(2))
+                    if 0.5 < val < 100:
+                        distance_candidates.append((val, "fallback"))
+                except: pass
 
     if distance_candidates:
-        sorted_candidates = sorted(
-            distance_candidates,
-            key=lambda x: ("reconstructed_4.97", "full", "label").index(x[1])
-        )
+        sorted_candidates = sorted(distance_candidates, key=lambda x: ("fallback", "label").index(x[1]))
         distance = f"{sorted_candidates[0][0]:.2f} km"
 
     # === TIME ===
     time = "Unknown"
-    # Layout 1: "Activity Time" on next line
+    # Check for nearby cluster before or after 'Activity Time'
     for i, line in enumerate(lines):
-        if "Activity Time" in line and i > 0:
-            match = re.search(r"([0-2]?[0-9][:.\']?[0-5][0-9])", lines[i - 1])
-            if match:
-                time = match.group(1).replace(".", ":").replace("'", ":")
-                break
-
-    # Layout 2: "Activity Time" and time on same line
-    if time == "Unknown":
-        for line in lines:
-            if "Activity Time" in line:
-                match = re.search(r"([0-2]?[0-9][:.\']?[0-5][0-9])", line)
+        if "Activity Time" in line:
+            # Check previous and same line for mm:ss or hh:mm:ss patterns
+            for j in [i-1, i]:
+                if j < 0 or j >= len(lines): continue
+                match = re.search(r"([0-9]{1,2}[:.][0-9]{2}(?:[:.][0-9]{2})?)", lines[j])
                 if match:
-                    time = match.group(1).replace(".", ":").replace("'", ":")
+                    time = match.group(1).replace(".", ":")
                     break
 
     # === PACE ===
     pace = "Unknown"
     best_pace = "Unknown"
 
-    avg_pace_match = re.search(r"Avg(?:\.|erage)?\s*Pace.*?([0-9]{1,2}'[0-9]{2})", text)
-    best_pace_match = re.search(r"Best\s*km.*?([0-9]{1,2}'[0-9]{2})", text)
+    avg_pace_match = re.search(r"Average\s+([0-9]{1,2}'[0-9]{2})", text)
+    best_pace_match = re.search(r"Best\s*km\s*@?\s*([0-9]{1,2}'[0-9]{2})", text)
 
     if avg_pace_match:
         pace = avg_pace_match.group(1) + "/km"
@@ -81,12 +71,10 @@ def coros_parser(image):
 
     # === HEART RATE ===
     avg_hr = None
-    hr_match = re.search(r"(\d{2,3})\s*bpm", text)
+    hr_match = re.search(r"([0-9]{2,3})\s*bpm", text)
     if hr_match:
         hr_val = int(hr_match.group(1))
-        # Heuristic fix: if too low, likely misread
-        if hr_val < 60:
-            hr_val += 100
+        if hr_val < 60: hr_val += 100
         avg_hr = str(hr_val)
 
     return {
