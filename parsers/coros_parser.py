@@ -4,6 +4,8 @@ import pytesseract, re
 def coros_parser(image):
     # Full OCR
     text = pytesseract.image_to_string(image, config='--psm 6')
+    print("[OCR TEXT]", text)  # ✅ This is safe here
+
     ocr_text_digits_only = pytesseract.image_to_string(image, config='--psm 11 -c tessedit_char_whitelist=0123456789./km')
 
     # Text normalization
