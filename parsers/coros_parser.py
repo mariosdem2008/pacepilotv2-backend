@@ -29,41 +29,41 @@ def coros_parser(image):
                     hr_zones[zone] = match.group(1)
 
     # === SUMMARY PRIORITY EXTRACTION ===
-    time = None
-    distance = None
-    pace = None
-    best_pace = None
+    time = "0:00"
+    distance = "Unknown"
+    pace = "Unknown"
+    best_pace = "Unknown"
     avg_hr = None
     max_hr = None
 
     for line in lines:
         line_clean = line.replace("’", "'").replace("`", "'")
 
-        # Time
-        if time is None:
+        # Time from summary
+        if time == "0:00":
             match = re.search(r"\bTime\b.*?(\d{1,2}:\d{2})", line_clean, re.IGNORECASE)
             if match:
                 time = match.group(1)
 
-        # Distance
-        if distance is None:
+        # Distance from summary
+        if distance == "Unknown":
             match = re.search(r"\bDistance\b.*?(\d{1,3}[.,]\d{1,2})\s*km", line_clean, re.IGNORECASE)
             if match:
                 distance = f"{float(match.group(1).replace(',', '.')):.2f} km"
 
-        # Avg pace
-        if pace is None:
+        # Average pace from summary
+        if pace == "Unknown":
             match = re.search(r"Average\s+(\d{1,2})'(\d{2})", line_clean)
             if match:
                 pace = f"{match.group(1)}'{match.group(2)}"
 
-        # Best pace
-        if best_pace is None:
+        # Best pace from summary
+        if best_pace == "Unknown":
             match = re.search(r"Best\s+(?:km|lap)?\s*(\d{1,2})[^\d]?(\d{2})", line_clean)
             if match:
                 best_pace = f"{match.group(1)}'{match.group(2)}"
 
-        # HR
+        # HR summary
         if "Heart Rate" in line and avg_hr is None:
             match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line_clean)
             if match:
@@ -105,7 +105,10 @@ def coros_parser(image):
                 pace_min = match.group(5) or "--"
                 pace_sec = match.group(6) or "--"
 
-            pace_str = f"{pace_min}'{pace_sec}" if pace_min != "--" and pace_sec != "--" else "-- /km"
+            if pace_min == "--" or pace_sec == "--":
+                pace_str = "-- /km"
+            else:
+                pace_str = f"{pace_min}'{pace_sec}"
 
             parsed_lines.append({
                 "label": label,
@@ -143,8 +146,22 @@ def coros_parser(image):
             current_split_entries.clear()
 
     # === FALLBACK DISTANCE ===
-    if distance is None and total_split_distance > 0:
-        distance = f"{total_split_distance:.2f} km"
+    if distance == "Unknown":
+        ocr_distance = None
+        for line in lines:
+            clean_line = line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1")
+            clean_line = re.sub(r"\s+", "", clean_line)
+            match = re.search(r"(\d{1,3}[.,]\d{1,2})km", clean_line, re.IGNORECASE)
+            if match:
+                ocr_distance = float(match.group(1).replace(",", "."))
+                break
+        if total_split_distance > 0:
+            if not ocr_distance or abs(ocr_distance - total_split_distance) > 0.3:
+                distance = f"{total_split_distance:.2f} km"
+            else:
+                distance = f"{ocr_distance:.2f} km"
+        elif ocr_distance:
+            distance = f"{ocr_distance:.2f} km"
 
     # === FALLBACK TIME ===
     def parse_time_to_sec(t):
@@ -155,13 +172,13 @@ def coros_parser(image):
             return 0
 
     total_seconds = sum(parse_time_to_sec(s["time"]) for s in splits)
-    if time is None and total_seconds > 0:
+    if time == "0:00" and total_seconds > 0:
         minutes = int(total_seconds // 60)
         seconds = int(total_seconds % 60)
         time = f"{minutes}:{seconds:02d}"
 
     # === FALLBACK PACE ===
-    if pace is None and total_split_distance > 0:
+    if pace == "Unknown" and total_split_distance > 0:
         pace_sec = int(total_seconds / total_split_distance)
         pace = f"{pace_sec // 60}'{pace_sec % 60:02d}"
 
@@ -180,7 +197,7 @@ def coros_parser(image):
             if best_pace_seconds is None or sec < best_pace_seconds:
                 best_pace_seconds = sec
 
-    if best_pace is None and best_pace_seconds:
+    if best_pace == "Unknown" and best_pace_seconds:
         best_pace = f"{best_pace_seconds // 60}'{best_pace_seconds % 60:02d}"
 
     # === CADENCE & STRIDE ===
