@@ -90,10 +90,11 @@ def coros_parser(image):
         # ✅ Always include km, even if 0.00
         total_split_distance += km
 
-        # 🔥 Increment split index BEFORE next Run
+        # 🔥 If next entry is a Run, we are moving to the next split
         if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
             split_index += 1
-            current_split_entries = set()
+            current_split_entries.clear()
+
 
     # === DISTANCE ===
     distance = "Unknown"
