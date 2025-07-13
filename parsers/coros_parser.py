@@ -10,9 +10,11 @@ def coros_parser(image):
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
     lines = text.splitlines()
 
+    # === HR ZONES INIT EARLY ===
+    hr_zones = {}
+
     # === DISTANCE ===
     distance = "Unknown"
-
     for line in lines:
         clean_line = line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1")
         clean_line = re.sub(r"\s+", "", clean_line)  # remove all spaces
@@ -24,12 +26,13 @@ def coros_parser(image):
             distance = f"{float(distance):.2f} km"
             break
 
-        # Try matching broken forms like '8.00' split into pieces
+        # Try matching broken forms like '8 e 0 0 km'
         match2 = re.findall(r"(\d)\s*e\s*0\s*0\s*km", line, re.IGNORECASE)
         if match2:
             distance = f"{match2[0]}.00 km"
             break
 
+    # === TIME ADDER HELPER ===
     def add_times(times):
         total_minutes = 0
         total_seconds = 0
@@ -41,13 +44,12 @@ def coros_parser(image):
                     total_minutes += minutes
                     total_seconds += seconds
         total_minutes += total_seconds // 60
-        total_seconds = total_seconds % 60
+        total_seconds %= 60
         return f"{total_minutes}:{total_seconds:02d}"
-    
+
     # === TOTAL TIME ===
     time = "Unknown"
 
-    # Try original ways first
     for line in lines:
         if "Total Time" in line:
             match = re.search(r"(\d{1,2}[:.]\d{2})", line)
@@ -63,12 +65,10 @@ def coros_parser(image):
                     time = match.group(1).replace(".", ":")
                     break
 
-    # Fallback: Use HR zone durations
     if time == "Unknown" and hr_zones:
         total_time = add_times(hr_zones.values())
         if total_time != "0:00":
             time = total_time
-
 
     if time == "Unknown":
         for line in reversed(lines):
@@ -145,8 +145,7 @@ def coros_parser(image):
                 stride_length_avg = int(match.group(1))
                 break
 
-    # === HR ZONES ===
-    hr_zones = {}
+    # === HR ZONES === (Already initialized earlier)
     zone_patterns = {
         "Recovery": r"Recovery.*?(\d{1,2}:\d{2})",
         "Aerobic Endurance": r"Aerobic Endurance.*?(\d{1,2}:\d{2})",
@@ -161,9 +160,6 @@ def coros_parser(image):
                 match = re.search(pattern, line)
                 if match:
                     hr_zones[zone] = match.group(1)
-
-
-
 
     return {
         "distance": distance,
