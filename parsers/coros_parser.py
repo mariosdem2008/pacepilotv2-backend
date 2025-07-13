@@ -10,7 +10,22 @@ def coros_parser(image):
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
     lines = text.splitlines()
 
+    # === HR ZONES PARSED EARLY ===
     hr_zones = {}
+    zone_patterns = {
+        "Recovery": r"Recovery.*?(\d{1,2}:\d{2})",
+        "Aerobic Endurance": r"Aerobic Endurance.*?(\d{1,2}:\d{2})",
+        "Aerobic Power": r"Aerobic Power.*?(\d{1,2}:\d{2})",
+        "Threshold": r"Threshold.*?(\d{1,2}:\d{2})",
+        "Anaerobic Endurance": r"Anaerobic Endurance.*?(\d{1,2}:\d{2})",
+        "Anaerobic Power": r"Anaerobic Power.*?(\d{1,2}:\d{2})"
+    }
+    for line in lines:
+        for zone, pattern in zone_patterns.items():
+            if zone in line:
+                match = re.search(pattern, line)
+                if match:
+                    hr_zones[zone] = match.group(1)
 
     # === DISTANCE ===
     distance = "Unknown"
@@ -22,7 +37,6 @@ def coros_parser(image):
             distance = match.group(1).replace(",", ".")
             distance = f"{float(distance):.2f} km"
             break
-
         match2 = re.findall(r"(\d)\s*e\s*0\s*0\s*km", line, re.IGNORECASE)
         if match2:
             distance = f"{match2[0]}.00 km"
@@ -45,11 +59,11 @@ def coros_parser(image):
     # === TIME ===
     time = "Unknown"
 
-    # === SMART COLUMN DETECTION NEAR 'Activity Time' ===
+    # SMART COLUMN DETECTION for "Activity Time"
     for i, line in enumerate(lines):
         if "Activity Time" in line:
             col_index = line.find("Activity Time")
-            for j in range(1, 4):  # look up to 3 lines below
+            for j in range(1, 4):  # check up to 3 lines below
                 if i + j < len(lines):
                     target_line = lines[i + j]
                     if len(target_line) > col_index + 5:
@@ -61,6 +75,7 @@ def coros_parser(image):
             if time != "Unknown":
                 break
 
+    # Try "Total Time" explicitly
     if time == "Unknown":
         for line in lines:
             if "Total Time" in line:
@@ -69,11 +84,15 @@ def coros_parser(image):
                     time = f"{match.group(1)}:{match.group(2)}"
                     break
 
+    # Try summing non-zero HR zone durations
     if time == "Unknown" and hr_zones:
-        total_time = add_times(hr_zones.values())
-        if total_time != "0:00":
-            time = total_time
+        nonzero_times = [t for t in hr_zones.values() if t != "0:00"]
+        if nonzero_times:
+            total_time = add_times(nonzero_times)
+            if total_time != "0:00":
+                time = total_time
 
+    # Final fallback — scan all text backwards for any time-like format
     if time == "Unknown":
         for line in reversed(lines):
             match = re.findall(r"(\d{1,2})[:.](\d{2})", line)
@@ -149,25 +168,9 @@ def coros_parser(image):
                 stride_length_avg = int(match.group(1))
                 break
 
-    # === HR ZONES ===
-    zone_patterns = {
-        "Recovery": r"Recovery.*?(\d{1,2}:\d{2})",
-        "Aerobic Endurance": r"Aerobic Endurance.*?(\d{1,2}:\d{2})",
-        "Aerobic Power": r"Aerobic Power.*?(\d{1,2}:\d{2})",
-        "Threshold": r"Threshold.*?(\d{1,2}:\d{2})",
-        "Anaerobic Endurance": r"Anaerobic Endurance.*?(\d{1,2}:\d{2})",
-        "Anaerobic Power": r"Anaerobic Power.*?(\d{1,2}:\d{2})"
-    }
-    for line in lines:
-        for zone, pattern in zone_patterns.items():
-            if zone in line:
-                match = re.search(pattern, line)
-                if match:
-                    hr_zones[zone] = match.group(1)
-
     return {
         "distance": distance,
-        "time": time,  # remains "Unknown" if not found
+        "time": time,  # now should be correct or "Unknown"
         "pace": pace,
         "best_pace": best_pace,
         "splits": splits,
