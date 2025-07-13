@@ -85,10 +85,9 @@ def coros_parser(image):
         if km > 0:
             total_split_distance += km
 
-        # ✅ Always increment BEFORE next Run (even if km == 0)
+        # ✅ Always increment BEFORE the next entry if it's a "Run", even if km == 0
         if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
             split_index += 1
-
 
 
 
