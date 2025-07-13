@@ -140,7 +140,17 @@ def coros_parser(image):
 
     # === PACE ===
     pace = "Unknown"
-    best_pace = "Unknown"
+    if best_pace == "Unknown":
+        for i, line in enumerate(lines):
+            if "Best km" in line or "Best Lap" in line:
+                # Look one line above for the actual pace value
+                if i > 0:
+                    prev_line = lines[i - 1]
+                    match = re.search(r"(\d{1,2})\s?([0-5]\d)\s*/km", prev_line)
+                    if match:
+                        best_pace = f"{match.group(1)}'{match.group(2)}"
+                        break
+
 
     for line in lines:
         avg_match = re.search(r"Average\s+(\d{1,2}'\d{2})", line)
@@ -170,6 +180,15 @@ def coros_parser(image):
 
     if best_pace_seconds:
         best_pace = f"{best_pace_seconds // 60}'{best_pace_seconds % 60:02d}"
+
+    # === TIME (Fallback for summary-only screenshots) ===
+    if time == "0:00":
+        for line in lines:
+            match = re.match(r"^\s*(\d{1,2}:\d{2})['’]?\s+\d{1,2}\s?\d{2}\s?/km", line)
+            if match:
+                time = match.group(1)
+                break
+
 
     # === HR / Cadence / Stride ===
     avg_hr = max_hr = cadence_avg = cadence_max = stride_length_avg = None
