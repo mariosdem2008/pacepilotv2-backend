@@ -1,4 +1,3 @@
-# parsers/coros_parser.py
 import pytesseract
 import re
 
@@ -8,7 +7,6 @@ def coros_parser(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Normalize and split lines
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
     lines = text.splitlines()
 
@@ -21,12 +19,17 @@ def coros_parser(image):
     if distance_count:
         distance = f"{distance_count:.2f} km"
 
-    # Attempt to extract distance if summary format is used
+    # Attempt to extract distance from summary format (e.g. "8 e 0 0 km")
     if distance == "Unknown":
         for line in lines:
-            match = re.search(r"\b(\d{1,3}\.\d{1,2})\s*km\b", line, re.IGNORECASE)
+            match = re.search(r"(\d)\s*e\s*(\d)\s*(\d)\s*(\d)\s*km", line, re.IGNORECASE)
             if match:
-                distance = f"{float(match.group(1)):.2f} km"
+                digits = ''.join(match.groups())
+                distance = f"{int(digits[:2])}.{int(digits[2:]):02d} km"
+                break
+            match2 = re.search(r"\b(\d{1,3}\.\d{1,2})\s*km\b", line, re.IGNORECASE)
+            if match2:
+                distance = f"{float(match2.group(1)):.2f} km"
                 break
 
     # === TOTAL TIME ===
@@ -39,6 +42,16 @@ def coros_parser(image):
                 break
 
     if time == "Unknown":
+        # Try extracting after "Activity Time"
+        for i, line in enumerate(lines):
+            if "Activity Time" in line and i + 1 < len(lines):
+                next_line = lines[i + 1]
+                match = re.search(r"(\d{1,2}[:.]\d{2})", next_line)
+                if match:
+                    time = match.group(1).replace(".", ":")
+                    break
+
+    if time == "Unknown":
         for line in reversed(lines):
             match = re.findall(r"(\d{1,2}[:.]\d{2})", line)
             if match:
@@ -49,12 +62,10 @@ def coros_parser(image):
     pace = "Unknown"
     best_pace = "Unknown"
     for line in lines:
-        # Avg pace line like "Average 5'01""
         avg_match = re.search(r"Average\s+(\d{1,2}'\d{2})", line)
         if avg_match:
             pace = avg_match.group(1)
 
-        # Best pace line like "Best km 4 48"
         best_match = re.search(r"Best km\s+(\d{1,2})[^\d]?(\d{2})", line)
         if best_match:
             best_pace = f"{best_match.group(1)}'{best_match.group(2)}"
@@ -116,10 +127,9 @@ def coros_parser(image):
                 if zone_match:
                     hr_zones[zone] = zone_match.group(1)
 
-    # === Final Output ===
     return {
         "distance": distance,
-        "time": time,
+        "time": time if time != "Unknown" else "0:00",
         "pace": pace,
         "best_pace": best_pace,
         "splits": splits,
