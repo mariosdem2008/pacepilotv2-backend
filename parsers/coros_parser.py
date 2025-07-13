@@ -99,49 +99,32 @@ def coros_parser(image):
         distance = f"{ocr_distance:.2f} km"
 
     # === TIME ===
-    time = "Unknown"
-    total_time = None
-    activity_time = None
+    total_seconds = 0
 
-    for line in lines:
-        if "Total Time" in line or "Activity Time" in line:
-            times = re.findall(r"(\d{1,2})[:.](\d{2})", line)
-            if "Total Time" in line and len(times) >= 1:
-                total_time = f"{times[0][0]}:{times[0][1]}"
-            if "Activity Time" in line and len(times) >= 2:
-                activity_time = f"{times[1][0]}:{times[1][1]}"
-        elif re.search(r"Total Time\s*", line) or re.search(r"Activity Time\s*", line):
-            match = re.findall(r"(\d{1,2})[:.](\d{2})", line)
-            if match:
-                if "Activity Time" in line and len(match) > 0:
-                    activity_time = f"{match[0][0]}:{match[0][1]}"
-                elif "Total Time" in line and len(match) > 0:
-                    total_time = f"{match[0][0]}:{match[0][1]}"
+    def parse_time_to_sec(t):
+        try:
+            if ':' in t:
+                parts = t.split(':')
+            elif '.' in t:
+                parts = t.split('.')
+            else:
+                return 0
+            return int(parts[0]) * 60 + float(parts[1])
+        except:
+            return 0
 
-    if activity_time:
-        time = activity_time
-    elif total_time:
-        time = total_time
-    elif hr_zones:
-        nonzero_times = [t for t in hr_zones.values() if t != "0:00"]
-        if nonzero_times:
-            total_time_calc = 0
-            for t in nonzero_times:
-                parts = t.split(":")
-                if len(parts) == 2:
-                    total_time_calc += int(parts[0]) * 60 + int(parts[1])
-            minutes = total_time_calc // 60
-            seconds = total_time_calc % 60
-            time = f"{minutes}:{seconds:02d}"
-    else:
-        for line in reversed(lines):
-            match = re.findall(r"(\d{1,2})[:.](\d{2})", line)
-            if match:
-                time = f"{match[0][0]}:{match[0][1]}"
-                break
+    for split in splits:
+        sec = parse_time_to_sec(split["time"])
+        total_seconds += sec
+
+    minutes = int(total_seconds // 60)
+    seconds = int(total_seconds % 60)
+    time = f"{minutes}:{seconds:02d}"
 
     # === PACE ===
     pace = "Unknown"
+
+
     best_pace = "Unknown"
 
     for line in lines:
@@ -158,6 +141,10 @@ def coros_parser(image):
             total_seconds = int(time_parts[0]) * 60 + int(time_parts[1])
             pace_sec = int(total_seconds / total_split_distance)
             pace = f"{pace_sec // 60}'{pace_sec % 60:02d}"
+
+    if total_split_distance > 0:
+        pace_sec = int(total_seconds / total_split_distance)
+        pace = f"{pace_sec // 60}'{pace_sec % 60:02d}"
 
     # === HEART RATE ===
     avg_hr = None
