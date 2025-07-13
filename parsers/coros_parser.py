@@ -12,30 +12,42 @@ def coros_parser(image):
 
     # === DISTANCE ===
     distance = "Unknown"
-    distance_count = 0
+
     for line in lines:
-        if re.search(r"\b1\.00\s*km\b", line):
-            distance_count += 1
-    if distance_count:
-        distance = f"{distance_count:.2f} km"
+        clean_line = line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1")
+        clean_line = re.sub(r"\s+", "", clean_line)  # remove all spaces
 
-    if distance == "Unknown":
-        for line in lines:
-            # Try catching broken-up patterns like "8 e 0 0 km"
-            clean_line = line.replace("e", ".").replace("O", "0")
-            match = re.search(r"\b(\d{1,2})\s*[.,]?\s*(\d{1,2})\s*km\b", clean_line, re.IGNORECASE)
-            if match:
-                distance = f"{int(match.group(1))}.{int(match.group(2)):02d} km"
-                break
+        # Match formats like 8.00km, 10.5km, etc.
+        match = re.search(r"(\d{1,3}[.,]\d{1,2})km", clean_line, re.IGNORECASE)
+        if match:
+            distance = match.group(1).replace(",", ".")
+            distance = f"{float(distance):.2f} km"
+            break
 
-            # Simpler match as fallback
-            match2 = re.search(r"\b(\d{1,3}\.\d{1,2})\s*km\b", clean_line)
-            if match2:
-                distance = f"{float(match2.group(1)):.2f} km"
-                break
+        # Try matching broken forms like '8.00' split into pieces
+        match2 = re.findall(r"(\d)\s*e\s*0\s*0\s*km", line, re.IGNORECASE)
+        if match2:
+            distance = f"{match2[0]}.00 km"
+            break
 
+    def add_times(times):
+        total_minutes = 0
+        total_seconds = 0
+        for t in times:
+            if t:
+                parts = t.split(":")
+                if len(parts) == 2:
+                    minutes, seconds = int(parts[0]), int(parts[1])
+                    total_minutes += minutes
+                    total_seconds += seconds
+        total_minutes += total_seconds // 60
+        total_seconds = total_seconds % 60
+        return f"{total_minutes}:{total_seconds:02d}"
+    
     # === TOTAL TIME ===
     time = "Unknown"
+
+    # Try original ways first
     for line in lines:
         if "Total Time" in line:
             match = re.search(r"(\d{1,2}[:.]\d{2})", line)
@@ -46,11 +58,17 @@ def coros_parser(image):
     if time == "Unknown":
         for i, line in enumerate(lines):
             if "Activity Time" in line and i + 1 < len(lines):
-                next_line = lines[i + 1]
-                match = re.search(r"(\d{1,2}[:.]\d{2})", next_line)
+                match = re.search(r"(\d{1,2}[:.]\d{2})", lines[i + 1])
                 if match:
                     time = match.group(1).replace(".", ":")
                     break
+
+    # Fallback: Use HR zone durations
+    if time == "Unknown" and hr_zones:
+        total_time = add_times(hr_zones.values())
+        if total_time != "0:00":
+            time = total_time
+
 
     if time == "Unknown":
         for line in reversed(lines):
@@ -143,6 +161,9 @@ def coros_parser(image):
                 match = re.search(pattern, line)
                 if match:
                     hr_zones[zone] = match.group(1)
+
+
+
 
     return {
         "distance": distance,
