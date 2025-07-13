@@ -35,13 +35,13 @@ def coros_parser(image):
 
     parsed_lines = []
 
-    # First, gather all valid split lines with extracted values
+    # Step 1: Parse all lines that are valid Run or Rest entries
     for line in lines:
         line = line.strip()
         try:
-            match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
+            match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2}|--)'(\d{2}|--)", line)
             if not match:
-                match = re.match(r"^\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
+                match = re.match(r"^\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2}|--)'(\d{2}|--)", line)
                 if match:
                     label = match.group(1)
                     km = float(match.group(2))
@@ -65,14 +65,14 @@ def coros_parser(image):
         except Exception as e:
             print(f"⚠️ Split parsing error: {e} on line: {line}", flush=True)
 
-    # Now assign split indices: increment BEFORE each new Run
+    # Step 2: Assign split numbers
     for i, entry in enumerate(parsed_lines):
         label = entry["label"]
         km = entry["km"]
         time_str = entry["time"]
         pace_str = entry["pace"]
 
-        # Assign split index to current entry
+        # Assign current split index
         splits.append({
             "split": split_index,
             "label": label,
@@ -81,15 +81,14 @@ def coros_parser(image):
             "pace": pace_str
         })
 
-        total_split_distance += km
+        # Add to total only if distance is positive
+        if km > 0:
+            total_split_distance += km
 
-        # Check if next line is a Run — increment split_index *before* that
-        if label == "Run":
-            if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
-                split_index += 1
-        elif label == "Rest":
-            if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
-                split_index += 1
+        # 🔥 Always increment BEFORE next Run
+        if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
+            split_index += 1
+
 
 
     # === DISTANCE ===
