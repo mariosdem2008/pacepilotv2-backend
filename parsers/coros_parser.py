@@ -1,4 +1,3 @@
-
 # parsers/coros_parser.py
 import pytesseract
 import re
@@ -22,6 +21,14 @@ def coros_parser(image):
     if distance_count:
         distance = f"{distance_count:.2f} km"
 
+    # Attempt to extract distance if summary format is used
+    if distance == "Unknown":
+        for line in lines:
+            match = re.search(r"\b(\d{1,3}\.\d{1,2})\s*km\b", line, re.IGNORECASE)
+            if match:
+                distance = f"{float(match.group(1)):.2f} km"
+                break
+
     # === TOTAL TIME ===
     time = "Unknown"
     for line in lines:
@@ -31,13 +38,26 @@ def coros_parser(image):
                 time = match.group(1).replace(".", ":")
                 break
 
-    # Fallback time from last valid pattern
     if time == "Unknown":
         for line in reversed(lines):
             match = re.findall(r"(\d{1,2}[:.]\d{2})", line)
             if match:
                 time = match[0].replace(".", ":")
                 break
+
+    # === PACE & BEST PACE ===
+    pace = "Unknown"
+    best_pace = "Unknown"
+    for line in lines:
+        # Avg pace line like "Average 5'01""
+        avg_match = re.search(r"Average\s+(\d{1,2}'\d{2})", line)
+        if avg_match:
+            pace = avg_match.group(1)
+
+        # Best pace line like "Best km 4 48"
+        best_match = re.search(r"Best km\s+(\d{1,2})[^\d]?(\d{2})", line)
+        if best_match:
+            best_pace = f"{best_match.group(1)}'{best_match.group(2)}"
 
     # === SPLITS ===
     splits = []
@@ -96,13 +116,12 @@ def coros_parser(image):
                 if zone_match:
                     hr_zones[zone] = zone_match.group(1)
 
-    
     # === Final Output ===
     return {
         "distance": distance,
         "time": time,
-        "pace": "Unknown",
-        "best_pace": "Unknown",
+        "pace": pace,
+        "best_pace": best_pace,
         "splits": splits,
         "avg_hr": avg_hr,
         "max_hr": max_hr,
