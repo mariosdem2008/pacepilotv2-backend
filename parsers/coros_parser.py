@@ -50,15 +50,15 @@ def coros_parser(image):
     # === TOTAL TIME ===
     time = "Unknown"
 
-    # Method 1: "Total Time"
+    # Try finding time on the same line as "Activity Time"
     for line in lines:
-        if "Total Time" in line:
+        if "Activity Time" in line:
             match = re.search(r"(\d{1,2}[:.]\d{2})", line)
             if match:
                 time = match.group(1).replace(".", ":")
                 break
 
-    # Method 2: "Activity Time" + peek next 3 lines
+    # If not found, try next few lines after "Activity Time"
     if time == "Unknown":
         for i, line in enumerate(lines):
             if "Activity Time" in line:
@@ -72,13 +72,22 @@ def coros_parser(image):
                 if time != "Unknown":
                     break
 
-    # Method 3: Use HR zones to estimate
+    # Still no time? Check "Total Time"
+    if time == "Unknown":
+        for line in lines:
+            if "Total Time" in line:
+                match = re.search(r"(\d{1,2}[:.]\d{2})", line)
+                if match:
+                    time = match.group(1).replace(".", ":")
+                    break
+
+    # Still unknown? Use HR zones sum
     if time == "Unknown" and hr_zones:
         total_time = add_times(hr_zones.values())
         if total_time != "0:00":
             time = total_time
 
-    # Method 4: Fallback to any match in text
+    # Final fallback: any time found scanning backwards
     if time == "Unknown":
         for line in reversed(lines):
             match = re.findall(r"(\d{1,2}[:.]\d{2})", line)
