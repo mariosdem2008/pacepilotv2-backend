@@ -140,10 +140,12 @@ def coros_parser(image):
 
     # === PACE ===
     pace = "Unknown"
+    best_pace = "Unknown"  # <-- ✅ ADD THIS
+
+    # Try to find best pace above "Best km" or "Best Lap"
     if best_pace == "Unknown":
         for i, line in enumerate(lines):
             if "Best km" in line or "Best Lap" in line:
-                # Look one line above for the actual pace value
                 if i > 0:
                     prev_line = lines[i - 1]
                     match = re.search(r"(\d{1,2})\s?([0-5]\d)\s*/km", prev_line)
@@ -151,7 +153,7 @@ def coros_parser(image):
                         best_pace = f"{match.group(1)}'{match.group(2)}"
                         break
 
-
+    # Try to find average and best pace inline
     for line in lines:
         avg_match = re.search(r"Average\s+(\d{1,2}'\d{2})", line)
         if avg_match:
@@ -160,10 +162,12 @@ def coros_parser(image):
         if best_match:
             best_pace = f"{best_match.group(1)}'{best_match.group(2)}"
 
+    # Fallback: compute average pace from splits
     if pace == "Unknown" and total_split_distance > 0:
         pace_sec = int(total_seconds / total_split_distance)
         pace = f"{pace_sec // 60}'{pace_sec % 60:02d}"
 
+    # Fallback: compute best pace from split entries
     def pace_to_seconds(p):
         try:
             parts = p.replace("’", "'").replace("`", "'").split("'")
@@ -180,6 +184,7 @@ def coros_parser(image):
 
     if best_pace_seconds:
         best_pace = f"{best_pace_seconds // 60}'{best_pace_seconds % 60:02d}"
+
 
     # === TIME (Fallback for summary-only screenshots) ===
     if time == "0:00":
