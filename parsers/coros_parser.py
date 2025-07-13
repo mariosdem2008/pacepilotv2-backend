@@ -96,12 +96,7 @@ def coros_parser(image):
                 if zone_match:
                     hr_zones[zone] = zone_match.group(1)
 
-    # Fallback distance for summary layout
-    if distance == "Unknown" and not splits:
-        fallback_dist = re.search(r"(\d+[.,]?\d*)\s*km", text)
-        if fallback_dist:
-            distance = fallback_dist.group(1).replace(",", ".") + " km"
-
+    
     # === Final Output ===
     return {
         "distance": distance,
