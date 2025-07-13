@@ -32,21 +32,22 @@ def coros_parser(image):
     splits = []
     total_split_distance = 0.0
     split_index = 1
+    awaiting_rests = False
 
     for line in lines:
+        line = line.strip()
         try:
-            line = line.strip()
-
             match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
+            if not match:
+                match = re.match(r"^\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
+
             if match:
-                label = match.group(2)
-                km = float(match.group(3))
-                time_str = match.group(4)
-                pace_str = f"{match.group(5)}'{match.group(6)}"
+                label = match.group(2) if match.lastindex == 6 else match.group(1)
+                km = float(match.group(3) if match.lastindex == 6 else match.group(2))
+                time_str = match.group(4) if match.lastindex == 6 else match.group(3)
+                pace_str = f"{match.group(5)}'{match.group(6)}" if match.lastindex == 6 else f"{match.group(4)}'{match.group(5)}"
 
-                if km < 0.05:
-                    continue
-
+                # Always include all valid data
                 total_split_distance += km
 
                 splits.append({
@@ -57,41 +58,26 @@ def coros_parser(image):
                     "pace": pace_str
                 })
 
-                # ⬇️ Only increment for Run
                 if label == "Run":
-                    split_index += 1
-
-                continue
-
-            match_fallback = re.match(r"^\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
-            if match_fallback:
-                label = match_fallback.group(1)
-                km = float(match_fallback.group(2))
-                time_str = match_fallback.group(3)
-                pace_str = f"{match_fallback.group(4)}'{match_fallback.group(5)}"
-
-                if km < 0.05:
+                    awaiting_rests = True
+                elif label == "Rest" and awaiting_rests:
+                    continue
+                elif label == "Rest" and not awaiting_rests:
+                    # handle case where Rest appears before any Run
+                    continue
+                else:
                     continue
 
-                total_split_distance += km
+                # Only increment split after all rests following a run
+                if label == "Rest":
+                    continue
 
-                splits.append({
-                    "split": split_index,
-                    "label": label,
-                    "km": f"{km:.2f} km",
-                    "time": time_str,
-                    "pace": pace_str
-                })
-
-                # ⬇️ Only increment for Run
-                if label == "Run":
-                    split_index += 1
-
-                continue
+                # Next split
+                split_index += 1
+                awaiting_rests = False
 
         except Exception as e:
             print(f"⚠️ Split parsing error: {e} on line: {line}", flush=True)
-
 
     # === DISTANCE ===
     distance = "Unknown"
@@ -102,10 +88,6 @@ def coros_parser(image):
         match = re.search(r"(\d{1,3}[.,]\d{1,2})km", clean_line, re.IGNORECASE)
         if match:
             ocr_distance = float(match.group(1).replace(",", "."))
-            break
-        match2 = re.findall(r"(\d)\s*e\s*0\s*0\s*km", line, re.IGNORECASE)
-        if match2:
-            ocr_distance = float(match2[0])
             break
 
     if total_split_distance > 0:
@@ -119,12 +101,7 @@ def coros_parser(image):
     # === TIME ===
     def parse_time_to_sec(t):
         try:
-            if ':' in t:
-                parts = t.split(':')
-            elif '.' in t:
-                parts = t.split('.')
-            else:
-                return 0
+            parts = re.split(r"[:.]", t)
             return int(parts[0]) * 60 + float(parts[1])
         except:
             return 0
@@ -200,10 +177,8 @@ def coros_parser(image):
         "hr_zones": hr_zones if hr_zones else None
     }
 
-    # Pretty-print result to terminal/log
     print("\n===== FINAL PARSED WORKOUT DATA =====", flush=True)
     print(json.dumps(result, indent=2), flush=True)
     print("======================================\n", flush=True)
 
     return result
-
