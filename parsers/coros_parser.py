@@ -37,27 +37,6 @@ def coros_parser(image):
         try:
             line = line.strip()
 
-            match = re.match(r"^\s*(\d+)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2}'\d{2})", line)
-            if match:
-                split_num = int(match.group(1))
-                km = float(match.group(2))
-                time_str = match.group(3)
-                pace_str = match.group(4)
-
-                if km < 0.05:
-                    continue
-
-                total_split_distance += km
-                splits.append({
-                    "split": split_index,
-                    "label": "Split",
-                    "km": f"{km:.2f} km",
-                    "time": time_str,
-                    "pace": pace_str
-                })
-                split_index += 1
-                continue
-
             match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
             if match:
                 label = match.group(2)
@@ -69,6 +48,7 @@ def coros_parser(image):
                     continue
 
                 total_split_distance += km
+
                 splits.append({
                     "split": split_index,
                     "label": label,
@@ -76,7 +56,11 @@ def coros_parser(image):
                     "time": time_str,
                     "pace": pace_str
                 })
-                split_index += 1
+
+                # ⬇️ Only increment for Run
+                if label == "Run":
+                    split_index += 1
+
                 continue
 
             match_fallback = re.match(r"^\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
@@ -90,6 +74,7 @@ def coros_parser(image):
                     continue
 
                 total_split_distance += km
+
                 splits.append({
                     "split": split_index,
                     "label": label,
@@ -97,10 +82,16 @@ def coros_parser(image):
                     "time": time_str,
                     "pace": pace_str
                 })
-                split_index += 1
+
+                # ⬇️ Only increment for Run
+                if label == "Run":
+                    split_index += 1
+
+                continue
 
         except Exception as e:
             print(f"⚠️ Split parsing error: {e} on line: {line}", flush=True)
+
 
     # === DISTANCE ===
     distance = "Unknown"
@@ -209,10 +200,7 @@ def coros_parser(image):
         "hr_zones": hr_zones if hr_zones else None
     }
 
-    # Pretty-print result to terminal/log
-    print("\n===== FINAL PARSED WORKOUT DATA =====", flush=True)
-    print(json.dumps(result, indent=2), flush=True)
-    print("======================================\n", flush=True)
+
 
     return result
 
