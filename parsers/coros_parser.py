@@ -8,7 +8,7 @@ def coros_parser(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Normalize and split lines
+    # Normalize text
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
     lines = text.splitlines()
 
@@ -21,16 +21,15 @@ def coros_parser(image):
     if distance_count:
         distance = f"{distance_count:.2f} km"
 
-    # === TOTAL TIME ===
+    # === TIME (Total) ===
     time = "Unknown"
     for line in lines:
-        if "Total Time" in line:
+        if re.search(r"\bTotal Time\b", line, re.IGNORECASE):
             match = re.search(r"(\d{1,2}[:.]\d{2})", line)
             if match:
                 time = match.group(1).replace(".", ":")
                 break
 
-    # Fallback time from last valid pattern
     if time == "Unknown":
         for line in reversed(lines):
             match = re.findall(r"(\d{1,2}[:.]\d{2})", line)
@@ -48,54 +47,47 @@ def coros_parser(image):
             splits.append({"km": km, "time": pace})
 
     # === HEART RATE ===
-    avg_hr = None
-    max_hr = None
+    avg_hr = max_hr = None
     for line in lines:
-        if "Heart Rate" in line and "Average" in line and "Max" in line:
-            hr_match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
-            if hr_match:
-                max_hr = int(hr_match.group(1))
-                avg_hr = int(hr_match.group(2))
+        if "Heart Rate" in line and re.search(r"Max\s+(\d+).*Average\s+(\d+)", line):
+            match = re.search(r"Max\s+(\d+).*Average\s+(\d+)", line)
+            if match:
+                max_hr = int(match.group(1))
+                avg_hr = int(match.group(2))
                 break
 
     # === CADENCE ===
-    cadence_avg = None
-    cadence_max = None
+    cadence_avg = cadence_max = None
     for line in lines:
-        if "Cadence" in line and "Average" in line and "Max" in line:
-            cad_match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
-            if cad_match:
-                cadence_max = int(cad_match.group(1))
-                cadence_avg = int(cad_match.group(2))
+        if "Cadence" in line and re.search(r"Max\s+(\d+).*Average\s+(\d+)", line):
+            match = re.search(r"Max\s+(\d+).*Average\s+(\d+)", line)
+            if match:
+                cadence_max = int(match.group(1))
+                cadence_avg = int(match.group(2))
                 break
 
     # === STRIDE LENGTH ===
     stride_length_avg = None
     for line in lines:
-        if "Stride Length" in line and "Average" in line:
-            stride_match = re.search(r"Average\s+(\d+)", line)
-            if stride_match:
-                stride_length_avg = int(stride_match.group(1))
+        if "Stride Length" in line:
+            match = re.search(r"Average\s+(\d+)", line)
+            if match:
+                stride_length_avg = int(match.group(1))
                 break
 
     # === HR ZONES ===
     hr_zones = {}
-    zone_labels = [
-        "Recovery",
-        "Aerobic Endurance",
-        "Aerobic Power",
-        "Threshold",
-        "Anaerobic Endurance",
-        "Anaerobic Power"
+    zone_names = [
+        "Recovery", "Aerobic Endurance", "Aerobic Power",
+        "Threshold", "Anaerobic Endurance", "Anaerobic Power"
     ]
     for line in lines:
-        for zone in zone_labels:
+        for zone in zone_names:
             if zone in line:
-                zone_match = re.search(rf"{zone}.*?(\d+:\d{{2}})", line)
-                if zone_match:
-                    hr_zones[zone] = zone_match.group(1)
+                match = re.search(r"(\d{1,2}:\d{2})", line)
+                if match:
+                    hr_zones[zone] = match.group(1)
 
-    # === Final Output ===
     return {
         "distance": distance,
         "time": time,
