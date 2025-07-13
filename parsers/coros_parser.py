@@ -27,26 +27,53 @@ def coros_parser(image):
                 if match:
                     hr_zones[zone] = match.group(1)
 
-    # === SPLITS FIRST ===
+    # === SPLITS ===
     splits = []
     total_split_distance = 0.0
+    split_index = 1
+
     for line in lines:
+        # Match simple numeric splits (original layout)
         match = re.match(r"^\s*(\d+)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2}'\d{2})", line)
         if match:
             split_num = int(match.group(1))
             km = float(match.group(2))
+            time_str = match.group(3)
             pace_str = match.group(4).replace("’", "'").replace("`", "'")
 
-            # Ignore garbage lines
             if km < 0.05:
                 continue
 
             total_split_distance += km
             splits.append({
                 "split": split_num,
+                "label": "Split",
                 "km": f"{km:.2f} km",
-                "time": pace_str
+                "time": time_str,
+                "pace": pace_str
             })
+            continue
+
+        # Match "Run"/"Rest" format: optional index, label, km, time, pace
+        match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})[°'](\d{2})", line)
+        if match:
+            label = match.group(2)
+            km = float(match.group(3))
+            time_str = match.group(4)
+            pace_str = f"{match.group(5)}'{match.group(6)}"
+
+            if km < 0.05:
+                continue
+
+            total_split_distance += km
+            splits.append({
+                "split": split_index,
+                "label": label,
+                "km": f"{km:.2f} km",
+                "time": time_str,
+                "pace": pace_str
+            })
+            split_index += 1
 
     # === DISTANCE ===
     distance = "Unknown"
@@ -63,7 +90,6 @@ def coros_parser(image):
             ocr_distance = float(match2[0])
             break
 
-    # Prefer total split distance if it's close to or better than OCR distance
     if total_split_distance > 0:
         if not ocr_distance or abs(ocr_distance - total_split_distance) > 0.3:
             distance = f"{total_split_distance:.2f} km"
