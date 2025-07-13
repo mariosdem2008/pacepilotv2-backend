@@ -32,49 +32,42 @@ def coros_parser(image):
     splits = []
     total_split_distance = 0.0
     split_index = 1
-    awaiting_rests = False
 
     for line in lines:
         line = line.strip()
         try:
+            # Full match including index
             match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
             if not match:
+                # Fallback without index
                 match = re.match(r"^\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
-
-            if match:
-                label = match.group(2) if match.lastindex == 6 else match.group(1)
-                km = float(match.group(3) if match.lastindex == 6 else match.group(2))
-                time_str = match.group(4) if match.lastindex == 6 else match.group(3)
-                pace_str = f"{match.group(5)}'{match.group(6)}" if match.lastindex == 6 else f"{match.group(4)}'{match.group(5)}"
-
-                # Always include all valid data
-                total_split_distance += km
-
-                splits.append({
-                    "split": split_index,
-                    "label": label,
-                    "km": f"{km:.2f} km",
-                    "time": time_str,
-                    "pace": pace_str
-                })
-
-                if label == "Run":
-                    awaiting_rests = True
-                elif label == "Rest" and awaiting_rests:
-                    continue
-                elif label == "Rest" and not awaiting_rests:
-                    # handle case where Rest appears before any Run
-                    continue
+                if match:
+                    label = match.group(1)
+                    km = float(match.group(2))
+                    time_str = match.group(3)
+                    pace_str = f"{match.group(4)}'{match.group(5)}"
                 else:
                     continue
+            else:
+                label = match.group(2)
+                km = float(match.group(3))
+                time_str = match.group(4)
+                pace_str = f"{match.group(5)}'{match.group(6)}"
 
-                # Only increment split after all rests following a run
-                if label == "Rest":
-                    continue
+            # Include all distances and times, no filtering
+            total_split_distance += km
 
-                # Next split
+            splits.append({
+                "split": split_index,
+                "label": label,
+                "km": f"{km:.2f} km",
+                "time": time_str,
+                "pace": pace_str
+            })
+
+            # Only increment split_index after a Run
+            if label == "Run":
                 split_index += 1
-                awaiting_rests = False
 
         except Exception as e:
             print(f"⚠️ Split parsing error: {e} on line: {line}", flush=True)
