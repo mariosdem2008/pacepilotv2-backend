@@ -73,9 +73,10 @@ def coros_parser(image):
         time_str = entry["time"]
         pace_str = entry["pace"]
 
-        # Use a tuple to detect exact duplicates
+        # Use a tuple to detect duplicates per split
         entry_key = (label, f"{km:.2f} km", time_str, pace_str)
 
+        # ✅ Always add entry, unless it's a duplicate in the same split
         if entry_key not in current_split_entries:
             splits.append({
                 "split": split_index,
@@ -86,14 +87,13 @@ def coros_parser(image):
             })
             current_split_entries.add(entry_key)
 
-        # Always track total km (even 0.00)
+        # ✅ Always include km, even if 0.00
         total_split_distance += km
 
-        # 🔥 Reset and increment BEFORE next Run
+        # 🔥 Increment split index BEFORE next Run
         if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
             split_index += 1
             current_split_entries = set()
-
 
     # === DISTANCE ===
     distance = "Unknown"
