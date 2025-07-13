@@ -17,16 +17,13 @@ def coros_parser(image):
     distance = "Unknown"
     for line in lines:
         clean_line = line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1")
-        clean_line = re.sub(r"\s+", "", clean_line)  # remove all spaces
-
-        # Match formats like 8.00km, 10.5km, etc.
+        clean_line = re.sub(r"\s+", "", clean_line)
         match = re.search(r"(\d{1,3}[.,]\d{1,2})km", clean_line, re.IGNORECASE)
         if match:
             distance = match.group(1).replace(",", ".")
             distance = f"{float(distance):.2f} km"
             break
 
-        # Try matching broken forms like '8 e 0 0 km'
         match2 = re.findall(r"(\d)\s*e\s*0\s*0\s*km", line, re.IGNORECASE)
         if match2:
             distance = f"{match2[0]}.00 km"
@@ -50,49 +47,44 @@ def coros_parser(image):
     # === TOTAL TIME ===
     time = "Unknown"
 
-    # Try finding time on the same line as "Activity Time"
     for line in lines:
         if "Activity Time" in line:
-            match = re.search(r"(\d{1,2}[:.]\d{2})", line)
+            match = re.search(r"(\d{1,2})[:.](\d{2})", line)
             if match:
-                time = match.group(1).replace(".", ":")
+                time = f"{match.group(1)}:{match.group(2)}"
                 break
 
-    # If not found, try next few lines after "Activity Time"
     if time == "Unknown":
         for i, line in enumerate(lines):
             if "Activity Time" in line:
                 for offset in range(1, 4):
                     if i + offset < len(lines):
                         next_line = lines[i + offset]
-                        match = re.search(r"(\d{1,2}[:.]\d{2})", next_line)
+                        match = re.search(r"(\d{1,2})[:.](\d{2})", next_line)
                         if match:
-                            time = match.group(1).replace(".", ":")
+                            time = f"{match.group(1)}:{match.group(2)}"
                             break
                 if time != "Unknown":
                     break
 
-    # Still no time? Check "Total Time"
     if time == "Unknown":
         for line in lines:
             if "Total Time" in line:
-                match = re.search(r"(\d{1,2}[:.]\d{2})", line)
+                match = re.search(r"(\d{1,2})[:.](\d{2})", line)
                 if match:
-                    time = match.group(1).replace(".", ":")
+                    time = f"{match.group(1)}:{match.group(2)}"
                     break
 
-    # Still unknown? Use HR zones sum
     if time == "Unknown" and hr_zones:
         total_time = add_times(hr_zones.values())
         if total_time != "0:00":
             time = total_time
 
-    # Final fallback: any time found scanning backwards
     if time == "Unknown":
         for line in reversed(lines):
-            match = re.findall(r"(\d{1,2}[:.]\d{2})", line)
+            match = re.findall(r"(\d{1,2})[:.](\d{2})", line)
             if match:
-                time = match[0].replace(".", ":")
+                time = f"{match[0][0]}:{match[0][1]}"
                 break
 
     # === PACE & BEST PACE ===
@@ -181,7 +173,7 @@ def coros_parser(image):
 
     return {
         "distance": distance,
-        "time": time if time != "Unknown" else "0:00",
+        "time": time,  # do NOT fallback to "0:00"
         "pace": pace,
         "best_pace": best_pace,
         "splits": splits,
