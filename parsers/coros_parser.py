@@ -200,7 +200,10 @@ def coros_parser(image):
         "hr_zones": hr_zones if hr_zones else None
     }
 
-
+    # Pretty-print result to terminal/log
+    print("\n===== FINAL PARSED WORKOUT DATA =====", flush=True)
+    print(json.dumps(result, indent=2), flush=True)
+    print("======================================\n", flush=True)
 
     return result
 
