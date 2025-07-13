@@ -35,25 +35,37 @@ def coros_parser(image):
 
     parsed_lines = []
 
-    # Step 1: Parse all lines that are valid Run or Rest entries
+    # Step 1: Parse all lines that resemble Run or Rest entries (flexible parsing)
     for line in lines:
         line = line.strip()
+        original_line = line  # Keep for logging
         try:
-            match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2}|--)'(\d{2}|--)", line)
+            match = re.match(
+                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?",
+                line
+            )
             if not match:
-                match = re.match(r"^\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2}|--)'(\d{2}|--)", line)
+                match = re.match(
+                    r"^\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?",
+                    line
+                )
                 if match:
                     label = match.group(1)
-                    km = float(match.group(2))
-                    time_str = match.group(3)
-                    pace_str = f"{match.group(4)}'{match.group(5)}"
+                    km = float(match.group(2).replace(",", "."))
+                    time_str = match.group(3) or "0:00"
+                    pace_min = match.group(4) or "0"
+                    pace_sec = match.group(5) or "00"
+                    pace_str = f"{pace_min}'{pace_sec}"
                 else:
+                    print(f"⏭️ Skipped unrecognized line: {original_line}", flush=True)
                     continue
             else:
                 label = match.group(2)
-                km = float(match.group(3))
-                time_str = match.group(4)
-                pace_str = f"{match.group(5)}'{match.group(6)}"
+                km = float(match.group(3).replace(",", "."))
+                time_str = match.group(4) or "0:00"
+                pace_min = match.group(5) or "0"
+                pace_sec = match.group(6) or "00"
+                pace_str = f"{pace_min}'{pace_sec}"
 
             parsed_lines.append({
                 "label": label,
@@ -63,9 +75,9 @@ def coros_parser(image):
             })
 
         except Exception as e:
-            print(f"⚠️ Split parsing error: {e} on line: {line}", flush=True)
+            print(f"⚠️ Error parsing line: {original_line} -> {e}", flush=True)
 
-    # Step 2: Assign split numbers and filter exact duplicates per split
+    # Step 2: Assign split numbers and filter duplicates
     current_split_entries = set()
     for i, entry in enumerate(parsed_lines):
         label = entry["label"]
@@ -73,10 +85,8 @@ def coros_parser(image):
         time_str = entry["time"]
         pace_str = entry["pace"]
 
-        # Use a tuple to detect duplicates per split
         entry_key = (label, f"{km:.2f} km", time_str, pace_str)
 
-        # ✅ Always add entry, unless it's a duplicate in the same split
         if entry_key not in current_split_entries:
             splits.append({
                 "split": split_index,
@@ -87,14 +97,11 @@ def coros_parser(image):
             })
             current_split_entries.add(entry_key)
 
-        # ✅ Always include km, even if 0.00
         total_split_distance += km
 
-        # 🔥 If next entry is a Run, we are moving to the next split
         if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
             split_index += 1
             current_split_entries.clear()
-
 
     # === DISTANCE ===
     distance = "Unknown"
