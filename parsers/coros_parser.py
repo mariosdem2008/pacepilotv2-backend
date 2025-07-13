@@ -7,7 +7,7 @@ def coros_parser(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    text = text.replace("’", "'").replace("“", '"').replace("”", '"')
+    text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
     lines = text.splitlines()
 
     # === HR ZONES PARSED EARLY ===
@@ -39,7 +39,7 @@ def coros_parser(image):
             split_num = int(match.group(1))
             km = float(match.group(2))
             time_str = match.group(3)
-            pace_str = match.group(4).replace("’", "'").replace("`", "'")
+            pace_str = match.group(4)
 
             if km < 0.05:
                 continue
@@ -54,13 +54,35 @@ def coros_parser(image):
             })
             continue
 
-        # Match "Run"/"Rest" format: optional index, label, km, time, pace
-        match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})[°'](\d{2})", line)
+        # Match "Run"/"Rest" with optional index
+        match = re.match(r"^\s*(\d+)?\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
         if match:
             label = match.group(2)
             km = float(match.group(3))
             time_str = match.group(4)
             pace_str = f"{match.group(5)}'{match.group(6)}"
+
+            if km < 0.05:
+                continue
+
+            total_split_distance += km
+            splits.append({
+                "split": split_index,
+                "label": label,
+                "km": f"{km:.2f} km",
+                "time": time_str,
+                "pace": pace_str
+            })
+            split_index += 1
+            continue
+
+        # Fallback: match Run/Rest with no index
+        match_fallback = re.match(r"^\s*(Run|Rest)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2})'(\d{2})", line)
+        if match_fallback:
+            label = match_fallback.group(1)
+            km = float(match_fallback.group(2))
+            time_str = match_fallback.group(3)
+            pace_str = f"{match_fallback.group(4)}'{match_fallback.group(5)}"
 
             if km < 0.05:
                 continue
@@ -124,7 +146,6 @@ def coros_parser(image):
     # === PACE ===
     pace = "Unknown"
 
-
     best_pace = "Unknown"
 
     for line in lines:
@@ -146,7 +167,7 @@ def coros_parser(image):
         pace_sec = int(total_seconds / total_split_distance)
         pace = f"{pace_sec // 60}'{pace_sec % 60:02d}"
 
-        # === BEST PACE FROM SPLITS ===
+    # === BEST PACE FROM SPLITS ===
     def pace_to_seconds(pace_str):
         try:
             parts = pace_str.replace("’", "'").replace("`", "'").split("'")
@@ -166,7 +187,6 @@ def coros_parser(image):
     best_pace = "Unknown"
     if best_pace_seconds:
         best_pace = f"{best_pace_seconds // 60}'{best_pace_seconds % 60:02d}"
-
 
     # === HEART RATE ===
     avg_hr = None
