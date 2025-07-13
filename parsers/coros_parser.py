@@ -27,8 +27,25 @@ def coros_parser(image):
                 if match:
                     hr_zones[zone] = match.group(1)
 
+    # === SPLITS FIRST ===
+    splits = []
+    total_split_distance = 0.0
+    for line in lines:
+        match = re.match(r"^\s*(\d+)\s+(\d+\.\d+)\s*km\s+[\d:.]+\s+(\d{1,2}'\d{2})", line)
+        if match:
+            split_num = int(match.group(1))
+            km = float(match.group(2))
+            pace_str = match.group(3).replace("’", "'").replace("`", "'")
+            total_split_distance += km
+            splits.append({
+                "split": split_num,
+                "km": f"{km:.2f} km",
+                "time": pace_str
+            })
+
     # === DISTANCE ===
     distance = "Unknown"
+    distance_extracted = False
     for line in lines:
         clean_line = line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1")
         clean_line = re.sub(r"\s+", "", clean_line)
@@ -36,122 +53,91 @@ def coros_parser(image):
         if match:
             distance = match.group(1).replace(",", ".")
             distance = f"{float(distance):.2f} km"
+            distance_extracted = True
             break
         match2 = re.findall(r"(\d)\s*e\s*0\s*0\s*km", line, re.IGNORECASE)
         if match2:
             distance = f"{match2[0]}.00 km"
+            distance_extracted = True
             break
 
-    def add_times(times):
-        total_minutes = 0
-        total_seconds = 0
-        for t in times:
-            if t:
-                parts = t.split(":")
-                if len(parts) == 2:
-                    minutes, seconds = int(parts[0]), int(parts[1])
-                    total_minutes += minutes
-                    total_seconds += seconds
-        total_minutes += total_seconds // 60
-        total_seconds %= 60
-        return f"{total_minutes}:{total_seconds:02d}"
+    # Use split total if better
+    if not distance_extracted and total_split_distance > 0:
+        distance = f"{total_split_distance:.2f} km"
 
     # === TIME ===
     time = "Unknown"
+    total_time = None
+    activity_time = None
 
-    # SMART COLUMN DETECTION for "Activity Time"
-    for i, line in enumerate(lines):
-        if "Activity Time" in line:
-            col_index = line.find("Activity Time")
-            for j in range(1, 4):
-                if i + j < len(lines):
-                    target_line = lines[i + j]
-                    if len(target_line) > col_index + 5:
-                        segment = target_line[col_index:col_index + 10]
-                        match = re.search(r"(\d{1,2})[:.](\d{2})", segment)
-                        if match:
-                            time = f"{match.group(1)}:{match.group(2)}"
-                            break
-            if time != "Unknown":
-                break
+    for line in lines:
+        if "Total Time" in line or "Activity Time" in line:
+            times = re.findall(r"(\d{1,2})[:.](\d{2})", line)
+            if "Total Time" in line and len(times) >= 1:
+                total_time = f"{times[0][0]}:{times[0][1]}"
+            if "Activity Time" in line and len(times) >= 2:
+                activity_time = f"{times[1][0]}:{times[1][1]}"
+        elif re.search(r"Total Time\s*", line) or re.search(r"Activity Time\s*", line):
+            match = re.findall(r"(\d{1,2})[:.](\d{2})", line)
+            if match:
+                if "Activity Time" in line and len(match) > 0:
+                    activity_time = f"{match[0][0]}:{match[0][1]}"
+                elif "Total Time" in line and len(match) > 0:
+                    total_time = f"{match[0][0]}:{match[0][1]}"
 
-    if time == "Unknown":
-        for line in lines:
-            if "Total Time" in line:
-                match = re.search(r"(\d{1,2})[:.](\d{2})", line)
-                if match:
-                    time = f"{match.group(1)}:{match.group(2)}"
-                    break
-
-    if time == "Unknown" and hr_zones:
+    if activity_time:
+        time = activity_time
+    elif total_time:
+        time = total_time
+    elif hr_zones:
         nonzero_times = [t for t in hr_zones.values() if t != "0:00"]
         if nonzero_times:
-            total_time = add_times(nonzero_times)
-            if total_time != "0:00":
-                time = total_time
-
-    if time == "Unknown":
+            total_time_calc = 0
+            for t in nonzero_times:
+                parts = t.split(":")
+                if len(parts) == 2:
+                    total_time_calc += int(parts[0]) * 60 + int(parts[1])
+            minutes = total_time_calc // 60
+            seconds = total_time_calc % 60
+            time = f"{minutes}:{seconds:02d}"
+    else:
         for line in reversed(lines):
             match = re.findall(r"(\d{1,2})[:.](\d{2})", line)
             if match:
                 time = f"{match[0][0]}:{match[0][1]}"
                 break
 
-    # === PACE & BEST PACE ===
+    # === PACE ===
     pace = "Unknown"
     best_pace = "Unknown"
+
     for line in lines:
         avg_match = re.search(r"Average\s+(\d{1,2}'\d{2})", line)
         if avg_match:
             pace = avg_match.group(1)
-
         best_match = re.search(r"Best km\s+(\d{1,2})[^\d]?(\d{2})", line)
         if best_match:
             best_pace = f"{best_match.group(1)}'{best_match.group(2)}"
 
-    # === SPLITS ===
-    splits = []
-    total_distance = 0.0
-    for line in lines:
-        match = re.match(r"^\s*(\d+)\s+(\d+\.\d+)\s*km\s+[\d:.]+\s+(\d{1,2}'\d{2})", line)
-        if match:
-            split_num = int(match.group(1))
-            km = float(match.group(2))
-            pace_str = match.group(3).replace("’", "'").replace("`", "'")
-            total_distance += km
-            splits.append({
-                "split": split_num,
-                "km": f"{km:.2f} km",
-                "time": pace_str
-            })
-
-    if distance == "Unknown" or (total_distance > 0 and float(distance.split()[0]) < total_distance):
-        distance = f"{total_distance:.2f} km"
-
-    if pace == "Unknown" and time != "Unknown" and total_distance > 0:
+    if pace == "Unknown" and time != "Unknown" and total_split_distance > 0:
         time_parts = time.split(":")
         if len(time_parts) == 2:
             total_seconds = int(time_parts[0]) * 60 + int(time_parts[1])
-            avg_pace_sec = int(total_seconds / total_distance)
-            avg_minutes = avg_pace_sec // 60
-            avg_seconds = avg_pace_sec % 60
-            pace = f"{avg_minutes}'{avg_seconds:02d}"
+            pace_sec = int(total_seconds / total_split_distance)
+            pace = f"{pace_sec // 60}'{pace_sec % 60:02d}"
 
     # === HEART RATE ===
     avg_hr = None
     max_hr = None
     for line in lines:
-        if "Heart Rate" in line and "Max" in line and "Average" in line:
+        if "Heart Rate" in line:
             match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
             if match:
                 max_hr = int(match.group(1))
                 avg_hr = int(match.group(2))
-                break
-        if "Heart Rate" in line and "Average" in line:
             match = re.search(r"Average\s+(\d+)", line)
             if match:
                 avg_hr = int(match.group(1))
-        if "Heart Rate" in line and "Max" in line:
             match = re.search(r"Max\s+(\d+)", line)
             if match:
                 max_hr = int(match.group(1))
@@ -160,17 +146,14 @@ def coros_parser(image):
     cadence_avg = None
     cadence_max = None
     for line in lines:
-        if "Cadence" in line and "Max" in line and "Average" in line:
+        if "Cadence" in line:
             match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
             if match:
                 cadence_max = int(match.group(1))
                 cadence_avg = int(match.group(2))
-                break
-        if "Cadence" in line and "Average" in line:
             match = re.search(r"Average\s+(\d+)", line)
             if match:
                 cadence_avg = int(match.group(1))
-        if "Cadence" in line and "Max" in line:
             match = re.search(r"Max\s+(\d+)", line)
             if match:
                 cadence_max = int(match.group(1))
