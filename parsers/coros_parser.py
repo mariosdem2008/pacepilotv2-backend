@@ -146,6 +146,28 @@ def coros_parser(image):
         pace_sec = int(total_seconds / total_split_distance)
         pace = f"{pace_sec // 60}'{pace_sec % 60:02d}"
 
+        # === BEST PACE FROM SPLITS ===
+    def pace_to_seconds(pace_str):
+        try:
+            parts = pace_str.replace("’", "'").replace("`", "'").split("'")
+            if len(parts) == 2:
+                return int(parts[0]) * 60 + int(parts[1])
+        except:
+            pass
+        return None
+
+    best_pace_seconds = None
+    for split in splits:
+        sec = pace_to_seconds(split["pace"])
+        if sec is not None:
+            if best_pace_seconds is None or sec < best_pace_seconds:
+                best_pace_seconds = sec
+
+    best_pace = "Unknown"
+    if best_pace_seconds:
+        best_pace = f"{best_pace_seconds // 60}'{best_pace_seconds % 60:02d}"
+
+
     # === HEART RATE ===
     avg_hr = None
     max_hr = None
