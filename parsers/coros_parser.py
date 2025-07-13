@@ -51,20 +51,23 @@ def coros_parser(image):
                 )
                 if match:
                     label = match.group(1)
-                    km = float(match.group(2).replace(",", "."))
+                    km = float(match.group(2).replace(",", ".")) if match.group(2) else 0.0
                     time_str = match.group(3) or "0:00"
-                    pace_min = match.group(4) or "0"
-                    pace_sec = match.group(5) or "00"
-                    pace_str = f"{pace_min}'{pace_sec}"
+                    pace_min = match.group(4) or "--"
+                    pace_sec = match.group(5) or "--"
                 else:
                     print(f"⏭️ Skipped unrecognized line: {original_line}", flush=True)
                     continue
             else:
                 label = match.group(2)
-                km = float(match.group(3).replace(",", "."))
+                km = float(match.group(3).replace(",", ".")) if match.group(3) else 0.0
                 time_str = match.group(4) or "0:00"
-                pace_min = match.group(5) or "0"
-                pace_sec = match.group(6) or "00"
+                pace_min = match.group(5) or "--"
+                pace_sec = match.group(6) or "--"
+
+            if pace_min == "--" or pace_sec == "--":
+                pace_str = "-- /km"
+            else:
                 pace_str = f"{pace_min}'{pace_sec}"
 
             parsed_lines.append({
