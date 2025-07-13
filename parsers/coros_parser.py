@@ -50,6 +50,7 @@ def coros_parser(image):
     # === TOTAL TIME ===
     time = "Unknown"
 
+    # Method 1: "Total Time"
     for line in lines:
         if "Total Time" in line:
             match = re.search(r"(\d{1,2}[:.]\d{2})", line)
@@ -57,19 +58,27 @@ def coros_parser(image):
                 time = match.group(1).replace(".", ":")
                 break
 
+    # Method 2: "Activity Time" + peek next 3 lines
     if time == "Unknown":
         for i, line in enumerate(lines):
-            if "Activity Time" in line and i + 1 < len(lines):
-                match = re.search(r"(\d{1,2}[:.]\d{2})", lines[i + 1])
-                if match:
-                    time = match.group(1).replace(".", ":")
+            if "Activity Time" in line:
+                for offset in range(1, 4):
+                    if i + offset < len(lines):
+                        next_line = lines[i + offset]
+                        match = re.search(r"(\d{1,2}[:.]\d{2})", next_line)
+                        if match:
+                            time = match.group(1).replace(".", ":")
+                            break
+                if time != "Unknown":
                     break
 
+    # Method 3: Use HR zones to estimate
     if time == "Unknown" and hr_zones:
         total_time = add_times(hr_zones.values())
         if total_time != "0:00":
             time = total_time
 
+    # Method 4: Fallback to any match in text
     if time == "Unknown":
         for line in reversed(lines):
             match = re.findall(r"(\d{1,2}[:.]\d{2})", line)
@@ -145,7 +154,7 @@ def coros_parser(image):
                 stride_length_avg = int(match.group(1))
                 break
 
-    # === HR ZONES === (Already initialized earlier)
+    # === HR ZONES ===
     zone_patterns = {
         "Recovery": r"Recovery.*?(\d{1,2}:\d{2})",
         "Aerobic Endurance": r"Aerobic Endurance.*?(\d{1,2}:\d{2})",
