@@ -31,17 +31,23 @@ def coros_parser(image):
     splits = []
     total_split_distance = 0.0
     for line in lines:
-        match = re.match(r"^\s*(\d+)\s+(\d+\.\d+)\s*km\s+[\d:.]+\s+(\d{1,2}'\d{2})", line)
+        match = re.match(r"^\s*(\d+)\s+(\d+\.\d+)\s*km\s+([\d:.]+)\s+(\d{1,2}'\d{2})", line)
         if match:
             split_num = int(match.group(1))
             km = float(match.group(2))
-            pace_str = match.group(3).replace("’", "'").replace("`", "'")
+            pace_str = match.group(4).replace("’", "'").replace("`", "'")
+
+            # Ignore splits with obviously invalid lines (e.g. "UN", "BP")
+            if km < 0.05:  # less than 50m — garbage line
+                continue
+
             total_split_distance += km
             splits.append({
                 "split": split_num,
                 "km": f"{km:.2f} km",
                 "time": pace_str
             })
+
 
     # === DISTANCE ===
     distance = "Unknown"
@@ -61,9 +67,10 @@ def coros_parser(image):
             distance_extracted = True
             break
 
-    # Use split total if better
+    # Use split total if no valid distance extracted
     if not distance_extracted and total_split_distance > 0:
         distance = f"{total_split_distance:.2f} km"
+
 
     # === TIME ===
     time = "Unknown"
