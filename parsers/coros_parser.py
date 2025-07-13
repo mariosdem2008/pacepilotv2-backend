@@ -37,8 +37,8 @@ def coros_parser(image):
             km = float(match.group(2))
             pace_str = match.group(4).replace("’", "'").replace("`", "'")
 
-            # Ignore splits with obviously invalid lines (e.g. "UN", "BP")
-            if km < 0.05:  # less than 50m — garbage line
+            # Ignore garbage lines
+            if km < 0.05:
                 continue
 
             total_split_distance += km
@@ -48,29 +48,29 @@ def coros_parser(image):
                 "time": pace_str
             })
 
-
     # === DISTANCE ===
     distance = "Unknown"
-    distance_extracted = False
+    ocr_distance = None
     for line in lines:
         clean_line = line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1")
         clean_line = re.sub(r"\s+", "", clean_line)
         match = re.search(r"(\d{1,3}[.,]\d{1,2})km", clean_line, re.IGNORECASE)
         if match:
-            distance = match.group(1).replace(",", ".")
-            distance = f"{float(distance):.2f} km"
-            distance_extracted = True
+            ocr_distance = float(match.group(1).replace(",", "."))
             break
         match2 = re.findall(r"(\d)\s*e\s*0\s*0\s*km", line, re.IGNORECASE)
         if match2:
-            distance = f"{match2[0]}.00 km"
-            distance_extracted = True
+            ocr_distance = float(match2[0])
             break
 
-    # Use split total if no valid distance extracted
-    if not distance_extracted and total_split_distance > 0:
-        distance = f"{total_split_distance:.2f} km"
-
+    # Prefer total split distance if it's close to or better than OCR distance
+    if total_split_distance > 0:
+        if not ocr_distance or abs(ocr_distance - total_split_distance) > 0.3:
+            distance = f"{total_split_distance:.2f} km"
+        else:
+            distance = f"{ocr_distance:.2f} km"
+    elif ocr_distance:
+        distance = f"{ocr_distance:.2f} km"
 
     # === TIME ===
     time = "Unknown"
