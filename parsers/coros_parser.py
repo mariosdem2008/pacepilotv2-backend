@@ -63,7 +63,7 @@ def coros_parser(image):
     for i, line in enumerate(lines):
         if "Activity Time" in line:
             col_index = line.find("Activity Time")
-            for j in range(1, 4):  # check up to 3 lines below
+            for j in range(1, 4):
                 if i + j < len(lines):
                     target_line = lines[i + j]
                     if len(target_line) > col_index + 5:
@@ -75,7 +75,6 @@ def coros_parser(image):
             if time != "Unknown":
                 break
 
-    # Try "Total Time" explicitly
     if time == "Unknown":
         for line in lines:
             if "Total Time" in line:
@@ -84,7 +83,6 @@ def coros_parser(image):
                     time = f"{match.group(1)}:{match.group(2)}"
                     break
 
-    # Try summing non-zero HR zone durations
     if time == "Unknown" and hr_zones:
         nonzero_times = [t for t in hr_zones.values() if t != "0:00"]
         if nonzero_times:
@@ -92,7 +90,6 @@ def coros_parser(image):
             if total_time != "0:00":
                 time = total_time
 
-    # Final fallback — scan all text backwards for any time-like format
     if time == "Unknown":
         for line in reversed(lines):
             match = re.findall(r"(\d{1,2})[:.](\d{2})", line)
@@ -114,12 +111,31 @@ def coros_parser(image):
 
     # === SPLITS ===
     splits = []
+    total_distance = 0.0
     for line in lines:
         match = re.match(r"^\s*(\d+)\s+(\d+\.\d+)\s*km\s+[\d:.]+\s+(\d{1,2}'\d{2})", line)
         if match:
+            split_num = int(match.group(1))
             km = float(match.group(2))
-            pace = match.group(3).replace("’", "'").replace("`", "'")
-            splits.append({"km": km, "time": pace})
+            pace_str = match.group(3).replace("’", "'").replace("`", "'")
+            total_distance += km
+            splits.append({
+                "split": split_num,
+                "km": f"{km:.2f} km",
+                "time": pace_str
+            })
+
+    if distance == "Unknown" or (total_distance > 0 and float(distance.split()[0]) < total_distance):
+        distance = f"{total_distance:.2f} km"
+
+    if pace == "Unknown" and time != "Unknown" and total_distance > 0:
+        time_parts = time.split(":")
+        if len(time_parts) == 2:
+            total_seconds = int(time_parts[0]) * 60 + int(time_parts[1])
+            avg_pace_sec = int(total_seconds / total_distance)
+            avg_minutes = avg_pace_sec // 60
+            avg_seconds = avg_pace_sec % 60
+            pace = f"{avg_minutes}'{avg_seconds:02d}"
 
     # === HEART RATE ===
     avg_hr = None
@@ -170,7 +186,7 @@ def coros_parser(image):
 
     return {
         "distance": distance,
-        "time": time,  # now should be correct or "Unknown"
+        "time": time,
         "pace": pace,
         "best_pace": best_pace,
         "splits": splits,
