@@ -19,15 +19,17 @@ def coros_parser(image):
     if distance_count:
         distance = f"{distance_count:.2f} km"
 
-    # Attempt to extract distance from summary format (e.g. "8 e 0 0 km")
     if distance == "Unknown":
         for line in lines:
-            match = re.search(r"(\d)\s*e\s*(\d)\s*(\d)\s*(\d)\s*km", line, re.IGNORECASE)
+            # Try catching broken-up patterns like "8 e 0 0 km"
+            clean_line = line.replace("e", ".").replace("O", "0")
+            match = re.search(r"\b(\d{1,2})\s*[.,]?\s*(\d{1,2})\s*km\b", clean_line, re.IGNORECASE)
             if match:
-                digits = ''.join(match.groups())
-                distance = f"{int(digits[:2])}.{int(digits[2:]):02d} km"
+                distance = f"{int(match.group(1))}.{int(match.group(2)):02d} km"
                 break
-            match2 = re.search(r"\b(\d{1,3}\.\d{1,2})\s*km\b", line, re.IGNORECASE)
+
+            # Simpler match as fallback
+            match2 = re.search(r"\b(\d{1,3}\.\d{1,2})\s*km\b", clean_line)
             if match2:
                 distance = f"{float(match2.group(1)):.2f} km"
                 break
@@ -42,7 +44,6 @@ def coros_parser(image):
                 break
 
     if time == "Unknown":
-        # Try extracting after "Activity Time"
         for i, line in enumerate(lines):
             if "Activity Time" in line and i + 1 < len(lines):
                 next_line = lines[i + 1]
@@ -83,49 +84,65 @@ def coros_parser(image):
     avg_hr = None
     max_hr = None
     for line in lines:
-        if "Heart Rate" in line and "Average" in line and "Max" in line:
-            hr_match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
-            if hr_match:
-                max_hr = int(hr_match.group(1))
-                avg_hr = int(hr_match.group(2))
+        if "Heart Rate" in line and "Max" in line and "Average" in line:
+            match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
+            if match:
+                max_hr = int(match.group(1))
+                avg_hr = int(match.group(2))
                 break
+        if "Heart Rate" in line and "Average" in line:
+            match = re.search(r"Average\s+(\d+)", line)
+            if match:
+                avg_hr = int(match.group(1))
+        if "Heart Rate" in line and "Max" in line:
+            match = re.search(r"Max\s+(\d+)", line)
+            if match:
+                max_hr = int(match.group(1))
 
     # === CADENCE ===
     cadence_avg = None
     cadence_max = None
     for line in lines:
-        if "Cadence" in line and "Average" in line and "Max" in line:
-            cad_match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
-            if cad_match:
-                cadence_max = int(cad_match.group(1))
-                cadence_avg = int(cad_match.group(2))
+        if "Cadence" in line and "Max" in line and "Average" in line:
+            match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
+            if match:
+                cadence_max = int(match.group(1))
+                cadence_avg = int(match.group(2))
                 break
+        if "Cadence" in line and "Average" in line:
+            match = re.search(r"Average\s+(\d+)", line)
+            if match:
+                cadence_avg = int(match.group(1))
+        if "Cadence" in line and "Max" in line:
+            match = re.search(r"Max\s+(\d+)", line)
+            if match:
+                cadence_max = int(match.group(1))
 
     # === STRIDE LENGTH ===
     stride_length_avg = None
     for line in lines:
         if "Stride Length" in line and "Average" in line:
-            stride_match = re.search(r"Average\s+(\d+)", line)
-            if stride_match:
-                stride_length_avg = int(stride_match.group(1))
+            match = re.search(r"Average\s+(\d+)", line)
+            if match:
+                stride_length_avg = int(match.group(1))
                 break
 
     # === HR ZONES ===
     hr_zones = {}
-    zone_labels = [
-        "Recovery",
-        "Aerobic Endurance",
-        "Aerobic Power",
-        "Threshold",
-        "Anaerobic Endurance",
-        "Anaerobic Power"
-    ]
+    zone_patterns = {
+        "Recovery": r"Recovery.*?(\d{1,2}:\d{2})",
+        "Aerobic Endurance": r"Aerobic Endurance.*?(\d{1,2}:\d{2})",
+        "Aerobic Power": r"Aerobic Power.*?(\d{1,2}:\d{2})",
+        "Threshold": r"Threshold.*?(\d{1,2}:\d{2})",
+        "Anaerobic Endurance": r"Anaerobic Endurance.*?(\d{1,2}:\d{2})",
+        "Anaerobic Power": r"Anaerobic Power.*?(\d{1,2}:\d{2})"
+    }
     for line in lines:
-        for zone in zone_labels:
+        for zone, pattern in zone_patterns.items():
             if zone in line:
-                zone_match = re.search(rf"{zone}.*?(\d+:\d{{2}})", line)
-                if zone_match:
-                    hr_zones[zone] = zone_match.group(1)
+                match = re.search(pattern, line)
+                if match:
+                    hr_zones[zone] = match.group(1)
 
     return {
         "distance": distance,
