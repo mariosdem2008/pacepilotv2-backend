@@ -65,30 +65,34 @@ def coros_parser(image):
         except Exception as e:
             print(f"⚠️ Split parsing error: {e} on line: {line}", flush=True)
 
-    # Step 2: Assign split numbers
+    # Step 2: Assign split numbers and filter exact duplicates per split
+    current_split_entries = set()
     for i, entry in enumerate(parsed_lines):
         label = entry["label"]
         km = entry["km"]
         time_str = entry["time"]
         pace_str = entry["pace"]
 
-        # ✅ Assign current split index
-        splits.append({
-            "split": split_index,
-            "label": label,
-            "km": f"{km:.2f} km",
-            "time": time_str,
-            "pace": pace_str
-        })
+        # Use a tuple to detect exact duplicates
+        entry_key = (label, f"{km:.2f} km", time_str, pace_str)
 
-        # ✅ Add to total only if distance is positive
-        if km > 0:
-            total_split_distance += km
+        if entry_key not in current_split_entries:
+            splits.append({
+                "split": split_index,
+                "label": label,
+                "km": f"{km:.2f} km",
+                "time": time_str,
+                "pace": pace_str
+            })
+            current_split_entries.add(entry_key)
 
-        # ✅ Always increment BEFORE the next entry if it's a "Run", even if km == 0
+        # Always track total km (even 0.00)
+        total_split_distance += km
+
+        # 🔥 Reset and increment BEFORE next Run
         if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
             split_index += 1
-
+            current_split_entries = set()
 
 
     # === DISTANCE ===
