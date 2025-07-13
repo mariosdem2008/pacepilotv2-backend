@@ -10,7 +10,6 @@ def coros_parser(image):
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
     lines = text.splitlines()
 
-    # === HR ZONES INIT EARLY ===
     hr_zones = {}
 
     # === DISTANCE ===
@@ -29,7 +28,6 @@ def coros_parser(image):
             distance = f"{match2[0]}.00 km"
             break
 
-    # === TIME ADDER HELPER ===
     def add_times(times):
         total_minutes = 0
         total_seconds = 0
@@ -44,28 +42,24 @@ def coros_parser(image):
         total_seconds %= 60
         return f"{total_minutes}:{total_seconds:02d}"
 
-    # === TOTAL TIME ===
+    # === TIME ===
     time = "Unknown"
 
-    for line in lines:
+    # === SMART COLUMN DETECTION NEAR 'Activity Time' ===
+    for i, line in enumerate(lines):
         if "Activity Time" in line:
-            match = re.search(r"(\d{1,2})[:.](\d{2})", line)
-            if match:
-                time = f"{match.group(1)}:{match.group(2)}"
-                break
-
-    if time == "Unknown":
-        for i, line in enumerate(lines):
-            if "Activity Time" in line:
-                for offset in range(1, 4):
-                    if i + offset < len(lines):
-                        next_line = lines[i + offset]
-                        match = re.search(r"(\d{1,2})[:.](\d{2})", next_line)
+            col_index = line.find("Activity Time")
+            for j in range(1, 4):  # look up to 3 lines below
+                if i + j < len(lines):
+                    target_line = lines[i + j]
+                    if len(target_line) > col_index + 5:
+                        segment = target_line[col_index:col_index + 10]
+                        match = re.search(r"(\d{1,2})[:.](\d{2})", segment)
                         if match:
                             time = f"{match.group(1)}:{match.group(2)}"
                             break
-                if time != "Unknown":
-                    break
+            if time != "Unknown":
+                break
 
     if time == "Unknown":
         for line in lines:
@@ -173,7 +167,7 @@ def coros_parser(image):
 
     return {
         "distance": distance,
-        "time": time,  # do NOT fallback to "0:00"
+        "time": time,  # remains "Unknown" if not found
         "pace": pace,
         "best_pace": best_pace,
         "splits": splits,
