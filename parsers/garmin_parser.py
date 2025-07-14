@@ -1,11 +1,19 @@
 # parsers/garmin_parser.py
-import pytesseract, re
+import easyocr
+import re
+import numpy as np
+
+# Initialize the reader once (you can optimize by initializing outside if possible)
+reader = easyocr.Reader(['en'], gpu=False)
 
 def garmin_parser(image):
-    text = pytesseract.image_to_string(image, config='--psm 6')
+    # easyocr expects a numpy array
+    text_lines = reader.readtext(np.array(image), detail=0)
+    text = "\n".join(text_lines)
     lines = text.splitlines()
 
     distance = time = pace = best_pace = "Unknown"
+
     for line in lines:
         if "Distance" in line or "Dist" in line:
             match = re.search(r"(\d+(?:\.\d{1,2})?)", line)
