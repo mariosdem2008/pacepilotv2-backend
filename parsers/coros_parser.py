@@ -74,12 +74,25 @@ def coros_parser(image):
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
 
-        if time == "0:00":
-            match = re.match(r"^\s*(\d{1,2}):(\d{2})\s*$", line.strip())
-            if match:
-                minutes, seconds = int(match.group(1)), int(match.group(2))
-                if minutes < 300:
+    # === EXTRA TIME DETECTION — FLOATING FORMATS OR ACTIVITY TIME LABEL ===
+    for i, line in enumerate(lines):
+        if time != "0:00":
+            break  # already found
+
+        line_clean = line.strip()
+
+        # Match things like "32:14" even if on messy lines (max 59 min cap)
+        match = re.search(r"\b(\d{1,2}):(\d{2})\b", line_clean)
+        if match:
+            minutes = int(match.group(1))
+            seconds = int(match.group(2))
+            if minutes < 300:
+                # Heuristic: favor lines near 'Activity Time' or early summary
+                context_window = ' '.join(lines[max(0, i-1):i+2]).lower()
+                if 'activity time' in context_window or i < 10:
                     time = f"{minutes}:{seconds:02d}"
+                    break
+
 
     # === SPLITS ===
     splits = []
