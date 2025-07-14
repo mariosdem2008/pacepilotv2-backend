@@ -99,28 +99,29 @@ def coros_parser(image):
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
 
-    # === EXTRA TIME DETECTION — FLOATING FORMATS OR ACTIVITY TIME LABEL ===
+    # === IMPROVED EXTRA TIME DETECTION — CONTEXT-AWARE FOR ACTIVITY TIME ===
     for i, line in enumerate(lines):
         if time != "0:00":
             break  # already found
 
         line_clean = line.strip()
-
-        # Match things like "32:14"
         match = re.search(r"\b(\d{1,2}):(\d{2})\b", line_clean)
+
         if match:
             minutes = int(match.group(1))
             seconds = int(match.group(2))
 
-            if 5 <= minutes < 300:  # Ignore short rest times or random clock stamps
-                # Look ahead one line to check for "Activity Time" reference
-                next_line = lines[i+1].lower() if i+1 < len(lines) else ""
-                prev_line = lines[i-1].lower() if i-1 >= 0 else ""
+            if 5 <= minutes < 300:  # Valid workout time range
+                # Context window: previous, current, and next line
+                prev_line = lines[i - 1].lower() if i - 1 >= 0 else ""
+                next_line = lines[i + 1].lower() if i + 1 < len(lines) else ""
                 context = f"{prev_line} {line_clean.lower()} {next_line}"
 
-                if "activity time" in context:
+                # Look for phrases like "activity time" nearby
+                if "activity time" in context or "activity" in context:
                     time = f"{minutes}:{seconds:02d}"
                     break
+
 
     # === SPLITS ===
     splits = []
