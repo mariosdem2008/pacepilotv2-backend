@@ -76,14 +76,15 @@ def coros_parser(image):
         original_line = line
         try:
             match = re.match(
-                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
+                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s+(--|\d{1,2})'(--|\d{2})(?:\"|”)?(?:\s*/km)?",
                 line
             )
             if not match:
                 match = re.match(
-                    r"^\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
+                    r"^\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s+(--|\d{1,2})'(--|\d{2})(?:\"|”)?(?:\s*/km)?",
                     line
-                )
+            )
+
                 if match:
                     label = match.group(1)
                     km = float(match.group(2).replace(",", ".")) if match.group(2) else 0.0
