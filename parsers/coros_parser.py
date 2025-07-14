@@ -112,8 +112,7 @@ def coros_parser(image):
                 "time": time_str,
                 "pace": pace_str
             })
-            line = line.replace('\u200b', '').strip()
-
+        
         except Exception as e:
             print(f"⚠️ Error parsing line: {original_line} -> {e}", flush=True)
 
