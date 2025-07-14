@@ -28,7 +28,7 @@ def coros_parser(image):
                 if match:
                     hr_zones[zone] = match.group(1)
 
-    # === SUMMARY PRIORITY EXTRACTION ===
+    # === SUMMARY EXTRACTION ===
     time = "0:00"
     distance = "Unknown"
     pace = "Unknown"
@@ -39,31 +39,26 @@ def coros_parser(image):
     for line in lines:
         line_clean = line.replace("’", "'").replace("`", "'")
 
-        # Time from summary
         if time == "0:00":
             match = re.search(r"\bTime\b.*?(\d{1,2}:\d{2})", line_clean, re.IGNORECASE)
             if match:
                 time = match.group(1)
 
-        # Distance from summary
         if distance == "Unknown":
             match = re.search(r"\bDistance\b.*?(\d{1,3}[.,]\d{1,2})\s*km", line_clean, re.IGNORECASE)
             if match:
                 distance = f"{float(match.group(1).replace(',', '.')):.2f} km"
 
-        # Average pace from summary
         if pace == "Unknown":
             match = re.search(r"Average\s+(\d{1,2})'(\d{2})", line_clean)
             if match:
                 pace = f"{match.group(1)}'{match.group(2)}"
 
-        # Best pace from summary
         if best_pace == "Unknown":
             match = re.search(r"Best\s+(?:km|lap)?\s*(\d{1,2})[^\d]?(\d{2})", line_clean)
             if match:
                 best_pace = f"{match.group(1)}'{match.group(2)}"
 
-        # HR summary
         if "Heart Rate" in line and avg_hr is None:
             match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line_clean)
             if match:
@@ -105,11 +100,9 @@ def coros_parser(image):
                 pace_min = match.group(5) or "--"
                 pace_sec = match.group(6) or "--"
 
-            if pace_min == "--" or pace_sec == "--":
-                pace_str = "-- /km"
-            else:
-                pace_str = f"{pace_min}'{pace_sec}"
+            pace_str = "-- /km" if pace_min == "--" or pace_sec == "--" else f"{pace_min}'{pace_sec}"
 
+            # ✅ Always keep the entry if time_str is not "0:00"
             parsed_lines.append({
                 "label": label,
                 "km": km,
@@ -202,7 +195,6 @@ def coros_parser(image):
 
     # === CADENCE & STRIDE ===
     cadence_avg = cadence_max = stride_length_avg = None
-
     for line in lines:
         if "Cadence" in line:
             match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
