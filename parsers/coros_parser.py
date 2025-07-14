@@ -8,7 +8,6 @@ def coros_parser(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Normalize text
     text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
     lines = text.splitlines()
 
@@ -65,6 +64,22 @@ def coros_parser(image):
             if match:
                 max_hr = int(match.group(1))
                 avg_hr = int(match.group(2))
+
+    # === EXTRA EXTRACTION FOR TIME & DISTANCE WITHOUT LABELS ===
+    for line in lines:
+        if distance == "Unknown":
+            match = re.search(r"([\d.,]{2,5})\s*[kKmMwW]", line)
+            if match:
+                value = float(match.group(1).replace(",", "."))
+                if 0.5 < value < 100:
+                    distance = f"{value:.2f} km"
+
+        if time == "0:00":
+            match = re.match(r"^\s*(\d{1,2}):(\d{2})\s*$", line.strip())
+            if match:
+                minutes, seconds = int(match.group(1)), int(match.group(2))
+                if minutes < 300:
+                    time = f"{minutes}:{seconds:02d}"
 
     # === SPLITS ===
     splits = []
@@ -205,31 +220,6 @@ def coros_parser(image):
             match = re.search(r"Average\s+(\d+)", line)
             if match:
                 stride_length_avg = int(match.group(1))
-
-    # === EXTRA PARSING FOR TIME & DISTANCE IF STILL UNKNOWN ===
-    if time == "0:00":
-        for i, line in enumerate(lines):
-            if re.search(r"\bTime\b|\bActivity\b", line, re.IGNORECASE):
-                for j in range(i+1, min(i+3, len(lines))):
-                    m = re.search(r"(\d{1,2}:\d{2})", lines[j])
-                    if m:
-                        time = m.group(1)
-                        break
-        if time == "0:00":
-            for line in lines:
-                m = re.match(r"^\s*(\d{1,2}:\d{2})\s+", line)
-                if m:
-                    time = m.group(1)
-                    break
-
-    if distance == "Unknown":
-        for i, line in enumerate(lines):
-            if re.search(r"\bDistance\b", line, re.IGNORECASE):
-                for j in range(i+1, min(i+3, len(lines))):
-                    m = re.search(r"(\d{1,3}[.,]\d{1,2})\s*[kK][mM]", lines[j])
-                    if m:
-                        distance = f"{float(m.group(1).replace(',', '.')):.2f} km"
-                        break
 
     result = {
         "distance": distance,
