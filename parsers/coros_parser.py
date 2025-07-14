@@ -67,12 +67,13 @@ def coros_parser(image):
 
     # === EXTRA EXTRACTION FOR TIME & DISTANCE WITHOUT LABELS ===
     for line in lines:
-        if distance == "Unknown":
+        if distance == "Unknown" and "km/h" not in line.lower():
             match = re.search(r"([\d.,]{2,5})\s*[kKmMwW]", line)
             if match:
                 value = float(match.group(1).replace(",", "."))
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
+
 
     # === EXTRA TIME DETECTION — FLOATING FORMATS OR ACTIVITY TIME LABEL ===
     for i, line in enumerate(lines):
