@@ -16,7 +16,9 @@ def preprocess_image(image):
 
 # === Main Parsing Function ===
 def coros_parser(image):
+    image = preprocess_image(image)
     text = pytesseract.image_to_string(image, config='--psm 6')
+
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
