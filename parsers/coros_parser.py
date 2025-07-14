@@ -1,14 +1,9 @@
-import easyocr
-import numpy as np
+import pytesseract
 import re
 import json
 
-# Initialize the OCR reader only once
-reader = easyocr.Reader(['en'], gpu=False)
-
 def coros_parser(image):
-    results = reader.readtext(np.array(image), detail=0)
-    text = "\n".join(results)
+    text = pytesseract.image_to_string(image, config='--psm 6')
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
@@ -79,6 +74,7 @@ def coros_parser(image):
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
 
+
     # === EXTRA TIME DETECTION — FLOATING FORMATS OR ACTIVITY TIME LABEL ===
     for i, line in enumerate(lines):
         if time != "0:00":
@@ -101,6 +97,8 @@ def coros_parser(image):
                 if "activity time" in context:
                     time = f"{minutes}:{seconds:02d}"
                     break
+
+
 
     # === SPLITS ===
     splits = []

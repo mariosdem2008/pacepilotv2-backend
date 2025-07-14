@@ -1,30 +1,27 @@
+# Use official Python image
 FROM python:3.11-slim
 
-# Install system dependencies for EasyOCR (OpenCV)
+# Install system dependencies, including Tesseract
 RUN apt-get update && apt-get install -y \
-    libgl1 \
+    tesseract-ocr \
     libglib2.0-0 \
     libsm6 \
-    libxext6 \
     libxext6 \
     libxrender-dev \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
+# Set working directory
 WORKDIR /app
 
-# Copy only requirements to use Docker layer cache
-COPY requirements.txt .
-
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
-
-# Copy rest of the app
+# Copy all files into the container
 COPY . .
 
-# Expose FastAPI port
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Expose the port
 EXPOSE 10000
 
-# Start app with uvicorn
+# Start the FastAPI app
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]

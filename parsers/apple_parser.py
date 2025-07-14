@@ -1,13 +1,5 @@
-import easyocr
-import numpy as np
-
-reader = easyocr.Reader(['en'], gpu=False)
-
 def apple_parser(image):
-    text_lines = reader.readtext(np.array(image), detail=0)
-    text = "\n".join(text_lines)
-    
-    # You can process `text` here if needed, for now returning static dummy data as before
+    text = pytesseract.image_to_string(image)
     return {
         "distance": "3.50 km",
         "time": "20:30",
