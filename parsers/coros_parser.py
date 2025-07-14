@@ -1,20 +1,28 @@
-import easyocr
+from doctr.io import DocumentFile
+from doctr.models import ocr_predictor
 import re
 import json
 
-# Initialize EasyOCR reader once (use English only for speed)
-reader = easyocr.Reader(['en'], gpu=False)
+ocr_model = ocr_predictor(pretrained=True)
 
 def coros_parser(image):
-    result_text = reader.readtext(image, detail=0)
-    text = "\n".join(result_text)
+    # Run OCR using Doctr
+    doc = DocumentFile.from_images(image)
+    result = ocr_model(doc)
+    text = result.render()
 
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
+    # The rest of your parsing logic remains the same:
     text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
     lines = text.splitlines()
+
+    # continue with your existing parsing logic...
+    # hr_zones, time, distance, pace, splits, etc.
+    ...
+
 
     # === HR ZONES ===
     hr_zones = {}
