@@ -1,28 +1,15 @@
-from doctr.io import DocumentFile
-from doctr.models import ocr_predictor
+import pytesseract
 import re
 import json
 
-ocr_model = ocr_predictor(pretrained=True)
-
 def coros_parser(image):
-    # Run OCR using Doctr
-    doc = DocumentFile.from_images(image)
-    result = ocr_model(doc)
-    text = result.render()
-
+    text = pytesseract.image_to_string(image, config='--psm 6')
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # The rest of your parsing logic remains the same:
     text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
     lines = text.splitlines()
-
-    # continue with your existing parsing logic...
-    # hr_zones, time, distance, pace, splits, etc.
-    ...
-
 
     # === HR ZONES ===
     hr_zones = {}
