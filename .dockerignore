@@ -1,7 +1,31 @@
-#dockerignore
+# Ignore virtual env and python caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+env/
+venv/
 
-fastapi
-uvicorn
-pillow
-python-multipart
-python-doctr[onnxruntime]
+# Ignore git, logs, temp files
+.git
+.gitignore
+*.log
+*.tmp
+*.swp
+
+# Ignore data, notebooks, large files not needed in container
+*.ipynb
+data/
+notebooks/
+
+# Ignore IDE/editor files
+.vscode/
+.idea/
+.DS_Store
+
+# Ignore tests if not needed
+tests/
+
+# Ignore any large or unneeded folders/files
+*.exe
+*.dll
