@@ -1,9 +1,12 @@
-import pytesseract
+import easyocr
+import numpy as np
 import re
 import json
 
 def coros_parser(image):
-    text = pytesseract.image_to_string(image, config='--psm 6')
+    reader = easyocr.Reader(['en'], gpu=False)
+    results = reader.readtext(np.array(image), detail=0)
+    text = "\n".join(results)
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)

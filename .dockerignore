@@ -1,3 +1,5 @@
+#dockerignore
+
 fastapi
 uvicorn
 pillow
