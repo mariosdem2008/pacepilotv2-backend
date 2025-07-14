@@ -1,7 +1,20 @@
 import pytesseract
 import re
 import json
+from PIL import Image, ImageEnhance, ImageFilter  # ✅ Required for preprocessing
 
+# === Image Preprocessing Function ===
+def preprocess_image(image):
+    # Convert to grayscale
+    image = image.convert('L')
+    # Boost contrast
+    enhancer = ImageEnhance.Contrast(image)
+    image = enhancer.enhance(2.0)
+    # Apply a slight sharpen filter
+    image = image.filter(ImageFilter.SHARPEN)
+    return image
+
+# === Main Parsing Function ===
 def coros_parser(image):
     text = pytesseract.image_to_string(image, config='--psm 6')
     print("===== OCR TEXT START =====", flush=True)
@@ -73,33 +86,22 @@ def coros_parser(image):
                 value = float(match.group(1).replace(",", "."))
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
-
+                    
     # === EXTRA DISTANCE RECOVERY FOR BROKEN FORMATS ===
     if distance == "Unknown":
         for line in lines:
-            # Fix common OCR issues
-            cleaned = (
-                line.replace(" ", "")
-                    .replace("e", ".")
-                    .replace("E", ".")
-                    .replace("/", "")
-                    .replace("|", "1")
-                    .replace("O", "0")
-            )
-            print(f"🔍 Cleaned line for distance check: {cleaned}", flush=True)
+            # Try fixing broken formats like "4 e 9 / km", "4 e 97 / km", etc.
+            cleaned = line.replace(" ", "").replace("e", ".").replace("E", ".").replace("/", "").replace("|", "1")
 
-            # Match 2 or 3 digits after the decimal
-            match = re.search(r"(\d{1,2}[.,]\d{2,3})km", cleaned.lower())
+            match = re.search(r"(\d{1,2}[.,]\d{1,3})km", cleaned.lower())
             if match:
                 try:
                     value = float(match.group(1).replace(",", "."))
                     if 0.5 < value < 100:
                         distance = f"{value:.2f} km"
-                        print(f"✅ Recovered distance: {distance}", flush=True)
                         break
-                except Exception as e:
-                    print(f"⚠️ Error converting distance: {match.group(1)} -> {e}", flush=True)
-
+                except:
+                    continue
     
 
     # === EXTRA TIME DETECTION — FLOATING FORMATS OR ACTIVITY TIME LABEL ===
