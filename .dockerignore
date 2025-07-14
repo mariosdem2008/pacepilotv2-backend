@@ -1,7 +1,5 @@
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
-.env
-.git/
-*.log
+fastapi
+uvicorn
+pillow
+python-multipart
+python-doctr[onnxruntime]
