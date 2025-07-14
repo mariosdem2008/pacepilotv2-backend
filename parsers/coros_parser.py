@@ -36,6 +36,20 @@ def coros_parser(image):
     avg_hr = None
     max_hr = None
 
+    for i, line in enumerate(lines):
+        # Normalize common OCR errors in line:
+        line = line.replace('’', "'").replace('“', '"').replace('”', '"').replace('°', "'").replace('`', "'")
+        # Fix 'i' that should be '1' in numbers:
+        line = re.sub(r'(?<=\d)i', '1', line)  # digit followed by i -> digit1
+        # Fix 'I' and 'l' that are often confused with 1:
+        line = re.sub(r'[Il]', '1', line)
+        # Fix 'o' and 'O' that are zero in numbers:
+        line = re.sub(r'(?<=\d)[oO]', '0', line)
+        # Fix 'e' to '.' if it looks like a decimal point in numbers:
+        line = re.sub(r'(\d)e(\d)', r'\1.\2', line)
+
+        lines[i] = line.strip()
+
     for line in lines:
         line_clean = line.replace("’", "'").replace("`", "'")
 
@@ -43,6 +57,12 @@ def coros_parser(image):
             match = re.search(r"\bTime\b.*?(\d{1,2}:\d{2})", line_clean, re.IGNORECASE)
             if match:
                 time = match.group(1)
+        if distance == "Unknown":
+            for line in lines:
+                match = re.search(r'(\d{1,3}[.,]\d{1,2})\s*km', line, re.IGNORECASE)
+                if match:
+                    distance = f"{float(match.group(1).replace(',', '.')):.2f} km"
+                    break
 
         if distance == "Unknown":
             match = re.search(r"\bDistance\b.*?(\d{1,3}[.,]\d{1,2})\s*km", line_clean, re.IGNORECASE)
