@@ -8,20 +8,21 @@ def preprocess_ocr_lines(lines):
         # Skip lines starting with time but containing noisy chars like letters, @, parentheses (likely status bar)
         if re.match(r"^\d{1,2}:\d{2}", line) and re.search(r"[a-zA-Z@_)(]", line):
             continue
-        
+
         # Normalize quotes and some weird chars from OCR
-        line = line.replace('“', '"').replace('”', '"').replace("’", "'").replace("‘", "'").replace("°", "'").replace("`", "'")
-        
+        line = line.replace('“', '"').replace('”', '"').replace("’", "'").replace("‘", "'") \
+                   .replace("°", ":").replace("`", "'")  # ✅ Added colon fix here
+
         # Remove unexpected special characters except common useful ones (letters, digits, colon, dot, dash, space)
         line = re.sub(r"[^a-zA-Z0-9:.'\" \-\n]", " ", line)
-        
+
         # Collapse multiple spaces to one
         line = re.sub(r"\s+", " ", line).strip()
-        
+
         # Skip lines with fewer than 2 digits (probably no useful info)
         if len(re.findall(r"\d", line)) < 2:
             continue
-        
+
         cleaned.append(line)
     return cleaned
 
@@ -31,9 +32,7 @@ def coros_parser(image):
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    # Split raw OCR text into lines
     raw_lines = text.splitlines()
-    # === NEW CLEANUP STEP ===
     lines = preprocess_ocr_lines(raw_lines)
 
     # === HR ZONES ===
@@ -61,7 +60,7 @@ def coros_parser(image):
     avg_hr = None
     max_hr = None
 
-    for line in lines:
+    for i, line in enumerate(lines):
         line_clean = line.replace("’", "'").replace("`", "'")
 
         if time == "0:00":
@@ -84,6 +83,16 @@ def coros_parser(image):
             if match:
                 best_pace = f"{match.group(1)}'{match.group(2)}"
 
+        # ✅ NEW LOOKAHEAD FOR BEST PACE
+        if "Best" in line_clean and best_pace == "Unknown":
+            for offset in range(1, 3):
+                if i + offset < len(lines):
+                    next_line = lines[i + offset]
+                    match = re.search(r"(\d{1,2})\s+(\d{2})\s*/km", next_line)
+                    if match:
+                        best_pace = f"{match.group(1)}'{match.group(2)}"
+                        break
+
         if "Heart Rate" in line and avg_hr is None:
             match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line_clean)
             if match:
@@ -102,7 +111,7 @@ def coros_parser(image):
     # === IMPROVED EXTRA TIME DETECTION — CONTEXT-AWARE FOR ACTIVITY TIME ===
     for i, line in enumerate(lines):
         if time != "0:00":
-            break  # already found
+            break
 
         line_clean = line.strip()
         match = re.search(r"\b(\d{1,2}):(\d{2})\b", line_clean)
@@ -111,17 +120,14 @@ def coros_parser(image):
             minutes = int(match.group(1))
             seconds = int(match.group(2))
 
-            if 5 <= minutes < 300:  # Valid workout time range
-                # Context window: previous, current, and next line
+            if 5 <= minutes < 300:
                 prev_line = lines[i - 1].lower() if i - 1 >= 0 else ""
                 next_line = lines[i + 1].lower() if i + 1 < len(lines) else ""
                 context = f"{prev_line} {line_clean.lower()} {next_line}"
 
-                # Look for phrases like "activity time" nearby
                 if "activity time" in context or "activity" in context:
                     time = f"{minutes}:{seconds:02d}"
                     break
-
 
     # === SPLITS ===
     splits = []
