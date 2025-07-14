@@ -1,14 +1,19 @@
-import pytesseract
+import easyocr
 import re
 import json
 
+# Initialize EasyOCR reader once (use English only for speed)
+reader = easyocr.Reader(['en'], gpu=False)
+
 def coros_parser(image):
-    text = pytesseract.image_to_string(image, config='--psm 6')
+    result_text = reader.readtext(image, detail=0)
+    text = "\n".join(result_text)
+
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("", "'")
+    text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
     lines = text.splitlines()
 
     # === HR ZONES ===
@@ -37,7 +42,7 @@ def coros_parser(image):
     max_hr = None
 
     for line in lines:
-        line_clean = line.replace("’", "'").replace("", "'")
+        line_clean = line.replace("’", "'").replace("`", "'")
 
         if time == "0:00":
             match = re.search(r"\bTime\b.*?(\d{1,2}:\d{2})", line_clean, re.IGNORECASE)
@@ -73,23 +78,7 @@ def coros_parser(image):
                 value = float(match.group(1).replace(",", "."))
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
-                    
-    # === EXTRA DISTANCE RECOVERY FOR BROKEN FORMATS ===
-    if distance == "Unknown":
-        for line in lines:
-            # Try fixing broken formats like "4 e 9 / km", "4 e 97 / km", etc.
-            cleaned = line.replace(" ", "").replace("e", ".").replace("E", ".").replace("/", "").replace("|", "1")
 
-            match = re.search(r"(\d{1,2}[.,]\d{1,3})km", cleaned.lower())
-            if match:
-                try:
-                    value = float(match.group(1).replace(",", "."))
-                    if 0.5 < value < 100:
-                        distance = f"{value:.2f} km"
-                        break
-                except:
-                    continue
-    
 
     # === EXTRA TIME DETECTION — FLOATING FORMATS OR ACTIVITY TIME LABEL ===
     for i, line in enumerate(lines):
@@ -228,7 +217,7 @@ def coros_parser(image):
     # === FALLBACK BEST PACE ===
     def pace_to_seconds(p):
         try:
-            parts = p.replace("’", "'").replace("", "'").split("'")
+            parts = p.replace("’", "'").replace("`", "'").split("'")
             return int(parts[0]) * 60 + int(parts[1])
         except:
             return None
