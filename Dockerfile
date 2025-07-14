@@ -20,8 +20,5 @@ COPY . .
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Expose the port
-EXPOSE 10000
-
-# Start the FastAPI app
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "10000"]
+# Start the FastAPI app with the port Render assigns
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
