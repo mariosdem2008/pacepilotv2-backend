@@ -2,14 +2,39 @@ import pytesseract
 import re
 import json
 
+def preprocess_ocr_lines(lines):
+    cleaned = []
+    for line in lines:
+        # Skip lines starting with time but containing noisy chars like letters, @, parentheses (likely status bar)
+        if re.match(r"^\d{1,2}:\d{2}", line) and re.search(r"[a-zA-Z@_)(]", line):
+            continue
+        
+        # Normalize quotes and some weird chars from OCR
+        line = line.replace('“', '"').replace('”', '"').replace("’", "'").replace("‘", "'").replace("°", "'").replace("`", "'")
+        
+        # Remove unexpected special characters except common useful ones (letters, digits, colon, dot, dash, space)
+        line = re.sub(r"[^a-zA-Z0-9:.'\" \-\n]", " ", line)
+        
+        # Collapse multiple spaces to one
+        line = re.sub(r"\s+", " ", line).strip()
+        
+        # Skip lines with fewer than 2 digits (probably no useful info)
+        if len(re.findall(r"\d", line)) < 2:
+            continue
+        
+        cleaned.append(line)
+    return cleaned
+
 def coros_parser(image):
     text = pytesseract.image_to_string(image, config='--psm 6')
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
-    lines = text.splitlines()
+    # Split raw OCR text into lines
+    raw_lines = text.splitlines()
+    # === NEW CLEANUP STEP ===
+    lines = preprocess_ocr_lines(raw_lines)
 
     # === HR ZONES ===
     hr_zones = {}
@@ -81,18 +106,21 @@ def coros_parser(image):
 
         line_clean = line.strip()
 
-        # Match things like "32:14" even if on messy lines (max 59 min cap)
+        # Match things like "32:14"
         match = re.search(r"\b(\d{1,2}):(\d{2})\b", line_clean)
         if match:
             minutes = int(match.group(1))
             seconds = int(match.group(2))
-            if minutes < 300:
-                # Heuristic: favor lines near 'Activity Time' or early summary
-                context_window = ' '.join(lines[max(0, i-1):i+2]).lower()
-                if 'activity time' in context_window or i < 10:
+
+            if 5 <= minutes < 300:  # Ignore short rest times or random clock stamps
+                # Look ahead one line to check for "Activity Time" reference
+                next_line = lines[i+1].lower() if i+1 < len(lines) else ""
+                prev_line = lines[i-1].lower() if i-1 >= 0 else ""
+                context = f"{prev_line} {line_clean.lower()} {next_line}"
+
+                if "activity time" in context:
                     time = f"{minutes}:{seconds:02d}"
                     break
-
 
     # === SPLITS ===
     splits = []
