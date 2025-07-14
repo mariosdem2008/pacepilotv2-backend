@@ -73,22 +73,33 @@ def coros_parser(image):
                 value = float(match.group(1).replace(",", "."))
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
-                    
+
     # === EXTRA DISTANCE RECOVERY FOR BROKEN FORMATS ===
     if distance == "Unknown":
         for line in lines:
-            # Try fixing broken formats like "4 e 9 / km", "4 e 97 / km", etc.
-            cleaned = line.replace(" ", "").replace("e", ".").replace("E", ".").replace("/", "").replace("|", "1")
+            # Fix common OCR issues
+            cleaned = (
+                line.replace(" ", "")
+                    .replace("e", ".")
+                    .replace("E", ".")
+                    .replace("/", "")
+                    .replace("|", "1")
+                    .replace("O", "0")
+            )
+            print(f"🔍 Cleaned line for distance check: {cleaned}", flush=True)
 
-            match = re.search(r"(\d{1,2}[.,]\d{1,3})km", cleaned.lower())
+            # Match 2 or 3 digits after the decimal
+            match = re.search(r"(\d{1,2}[.,]\d{2,3})km", cleaned.lower())
             if match:
                 try:
                     value = float(match.group(1).replace(",", "."))
                     if 0.5 < value < 100:
                         distance = f"{value:.2f} km"
+                        print(f"✅ Recovered distance: {distance}", flush=True)
                         break
-                except:
-                    continue
+                except Exception as e:
+                    print(f"⚠️ Error converting distance: {match.group(1)} -> {e}", flush=True)
+
     
 
     # === EXTRA TIME DETECTION — FLOATING FORMATS OR ACTIVITY TIME LABEL ===
