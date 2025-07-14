@@ -58,9 +58,4 @@ async def analyze_screenshots_batch(
         return {"status": "error", "message": str(e)}
 
 
-import os
 
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.getenv("PORT", 8000))  # Use PORT env var or fallback to 8000
-    uvicorn.run("main:app", host="0.0.0.0", port=port)
