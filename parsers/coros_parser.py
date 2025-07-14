@@ -1,24 +1,9 @@
 import pytesseract
 import re
 import json
-from PIL import Image, ImageEnhance, ImageFilter  # ✅ Required for preprocessing
 
-# === Image Preprocessing Function ===
-def preprocess_image(image):
-    # Convert to grayscale
-    image = image.convert('L')
-    # Boost contrast
-    enhancer = ImageEnhance.Contrast(image)
-    image = enhancer.enhance(2.0)
-    # Apply a slight sharpen filter
-    image = image.filter(ImageFilter.SHARPEN)
-    return image
-
-# === Main Parsing Function ===
 def coros_parser(image):
-    image = preprocess_image(image)
     text = pytesseract.image_to_string(image, config='--psm 6')
-
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
@@ -88,23 +73,7 @@ def coros_parser(image):
                 value = float(match.group(1).replace(",", "."))
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
-                    
-    # === EXTRA DISTANCE RECOVERY FOR BROKEN FORMATS ===
-    if distance == "Unknown":
-        for line in lines:
-            # Try fixing broken formats like "4 e 9 / km", "4 e 97 / km", etc.
-            cleaned = line.replace(" ", "").replace("e", ".").replace("E", ".").replace("/", "").replace("|", "1")
 
-            match = re.search(r"(\d{1,2}[.,]\d{1,3})km", cleaned.lower())
-            if match:
-                try:
-                    value = float(match.group(1).replace(",", "."))
-                    if 0.5 < value < 100:
-                        distance = f"{value:.2f} km"
-                        break
-                except:
-                    continue
-    
 
     # === EXTRA TIME DETECTION — FLOATING FORMATS OR ACTIVITY TIME LABEL ===
     for i, line in enumerate(lines):
