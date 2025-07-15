@@ -1,7 +1,7 @@
 import re
 from .utils import parse_time_to_sec, pace_to_seconds
 
-def apply_fallbacks(summary, splits, total_split_distance, lines):
+def apply_fallbacks(summary, splits, total_split_distance, lines, text):
     time = summary["time"]
     distance = summary["distance"]
     pace = summary["pace"]
@@ -9,18 +9,15 @@ def apply_fallbacks(summary, splits, total_split_distance, lines):
 
     total_seconds = sum(parse_time_to_sec(s["time"]) for s in splits)
 
-    # === FALLBACK TIME ===
     if time == "0:00" and total_seconds > 0:
         minutes = int(total_seconds // 60)
         seconds = int(total_seconds % 60)
         time = f"{minutes}:{seconds:02d}"
 
-    # === FALLBACK PACE ===
     if pace == "Unknown" and total_split_distance > 0:
         pace_sec = int(total_seconds / total_split_distance)
         pace = f"{pace_sec // 60}'{pace_sec % 60:02d}"
 
-    # === FALLBACK BEST PACE ===
     best_pace_seconds = None
     for s in splits:
         sec = pace_to_seconds(s["pace"])
@@ -30,17 +27,15 @@ def apply_fallbacks(summary, splits, total_split_distance, lines):
     if best_pace == "Unknown" and best_pace_seconds:
         best_pace = f"{best_pace_seconds // 60}'{best_pace_seconds % 60:02d}"
 
-    # === FALLBACK DISTANCE ===
+    # fallback distance detection
     if distance == "Unknown":
         ocr_distance = None
         for line in lines:
-            clean_line = line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1")
-            clean_line = re.sub(r"\s+", "", clean_line)
+            clean_line = re.sub(r"\s+", "", line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1"))
             match = re.search(r"(\d{1,3}[.,]\d{1,2})km", clean_line, re.IGNORECASE)
             if match:
                 ocr_distance = float(match.group(1).replace(",", "."))
                 break
-
         if total_split_distance > 0:
             if not ocr_distance or abs(ocr_distance - total_split_distance) > 0.3:
                 distance = f"{total_split_distance:.2f} km"
@@ -49,19 +44,6 @@ def apply_fallbacks(summary, splits, total_split_distance, lines):
         elif ocr_distance:
             distance = f"{ocr_distance:.2f} km"
 
-    # === CADENCE & STRIDE LENGTH ===
-    cadence_avg = cadence_max = stride_length_avg = None
-    for line in lines:
-        if "Cadence" in line:
-            match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
-            if match:
-                cadence_max = int(match.group(1))
-                cadence_avg = int(match.group(2))
-        if "Stride Length" in line and "Average" in line:
-            match = re.search(r"Average\s+(\d+)", line)
-            if match:
-                stride_length_avg = int(match.group(1))
-
     return {
         "distance": distance,
         "time": time,
@@ -69,7 +51,7 @@ def apply_fallbacks(summary, splits, total_split_distance, lines):
         "best_pace": best_pace,
         "avg_hr": summary["avg_hr"],
         "max_hr": summary["max_hr"],
-        "cadence_avg": cadence_avg,
-        "cadence_max": cadence_max,
-        "stride_length_avg": stride_length_avg
+        "cadence_avg": None,
+        "cadence_max": None,
+        "stride_length_avg": None
     }
