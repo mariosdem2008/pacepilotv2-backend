@@ -83,6 +83,7 @@ def extract_summary(lines):
                 if 0.5 < value < 100:
                     distance = f"{value:.2f} km"
 
+
     # Extra time detection for floating formats or "Activity Time" label
     for i, line in enumerate(lines):
         if time != "0:00":
