@@ -31,7 +31,7 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
 
     # fallback distance detection with your cleaner helper
     if distance == "Unknown":
-        ocr_distance = recover_distance_from_cleaned(lines)
+        ocr_distance = recover_distance_from_lines(lines)
         if total_split_distance > 0:
             if not ocr_distance or abs(ocr_distance - total_split_distance) > 0.3:
                 distance = f"{total_split_distance:.2f} km"
