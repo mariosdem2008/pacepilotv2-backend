@@ -1,53 +1,12 @@
-import cv2
 import pytesseract
 import re
 import json
-import numpy as np
-from PIL import Image
 
-def preprocess_image_opencv(image):
-    """Preprocess the image using OpenCV before OCR"""
-    if isinstance(image, Image.Image):
-        image = np.array(image)  # Convert PIL to NumPy array
-
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)  # Convert to grayscale
-    blur = cv2.GaussianBlur(gray, (3, 3), 0)        # Reduce noise
-    thresh = cv2.adaptiveThreshold(
-        blur, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
-        cv2.THRESH_BINARY, 11, 2)                   # Adaptive thresholding
-
-    return thresh
-
-
-def coros_parser(image, preprocess=True):
-    """
-    Parse workout data from a COROS screenshot image.
-
-    Args:
-      image: Input image, either PIL.Image or OpenCV image (numpy array).
-      preprocess: If True, run preprocessing (denoising + threshold) before OCR.
-
-    Returns:
-      dict with parsed workout data.
-    """
-
-    if preprocess:
-        preprocessed = preprocess_image_opencv(image)
-    else:
-        # If image is PIL, convert to OpenCV format for pytesseract
-        if isinstance(image, Image.Image):
-            preprocessed = np.array(image)
-            preprocessed = cv2.cvtColor(preprocessed, cv2.COLOR_RGB2BGR)
-        else:
-            preprocessed = image
-
-    text = pytesseract.image_to_string(preprocessed, config='--psm 6')
-
+def coros_parser(image):
+    text = pytesseract.image_to_string(image, config='--psm 6')
     print("===== OCR TEXT START =====", flush=True)
     print(text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
-
-    # (The rest of your parsing logic stays exactly the same...)
 
     text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
     lines = text.splitlines()
@@ -77,6 +36,7 @@ def coros_parser(image, preprocess=True):
     avg_hr = None
     max_hr = None
 
+    
     for line in lines:
         line_clean = line.replace("’", "'").replace("`", "'")
 
