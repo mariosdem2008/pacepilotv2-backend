@@ -16,7 +16,15 @@ def clean_ocr_lines(text):
 
 
 
-
+def recover_distance_from_cleaned(cleaned_lines):
+    joined = " ".join(cleaned_lines)
+    match = re.search(r"(\d)\s*(\.|,)\s*(\d{1,2})\s*km", joined, re.IGNORECASE)
+    if match:
+        try:
+            return float(f"{match.group(1)}.{match.group(3)}")
+        except:
+            pass
+    return None
 
 
 def recover_distance_from_lines(lines):
