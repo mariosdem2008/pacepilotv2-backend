@@ -2,40 +2,6 @@ import re
 from .utils.ocr_cleaner import recover_distance_from_lines  # ✅ MOVE TO THE TOP
 
 
-def recover_distance_from_lines(lines):
-    """
-    Attempt to recover a decimal distance from noisy OCR lines.
-    Joins all lines and looks for number + km pattern allowing for OCR noise.
-    """
-    joined_text = " ".join(lines).lower()
-
-    # Fix common OCR confusions in numbers
-    joined_text = joined_text.replace("e", ".").replace("o", "0").replace("l", "1").replace("|", "1")
-
-    # === Prevent false matches from "km/h" ===
-    # Replace "km/h" with placeholder to prevent false positives
-    joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
-
-    # Patterns to catch things like '4.97 km' or '4 97 km'
-    patterns = [
-        r"(\d{1,3}[.,]?\s?\d{1,2})\s*km",
-        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
-    ]
-
-    for pattern in patterns:
-        matches = re.findall(pattern, joined_text)
-        if matches:
-            for m in matches:
-                dist_str = ".".join(part.strip() for part in m) if isinstance(m, tuple) else m.strip()
-                try:
-                    dist = float(dist_str.replace(",", "."))
-                    if 0.5 < dist < 100:
-                        return f"{dist:.2f} km"
-                except:
-                    continue
-    return None
-
-
 
 def extract_summary(lines):
     time = "0:00"

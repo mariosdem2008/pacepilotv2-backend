@@ -16,34 +16,42 @@ def clean_ocr_lines(text):
 def recover_distance_from_lines(lines):
     """
     Attempt to recover a decimal distance from noisy OCR lines.
-    Joins all lines and looks for number + km pattern allowing for OCR noise,
-    excluding 'km/h' speed entries.
+    Joins all lines and looks for number + km pattern allowing for OCR noise.
     """
     joined_text = " ".join(lines).lower()
 
-    # Remove speed entries like "20 km/h"
-    joined_text = re.sub(r"\b\d{1,3}\s*[.,]?\s*\d{0,2}\s*km/h\b", "", joined_text)
+    # Fix common OCR confusions in numbers
+    joined_text = (
+        joined_text.replace("e", ".")
+        .replace("o", "0")
+        .replace("l", "1")
+        .replace("|", "1")
+        .replace("/", ".")
+    )
 
-    # Fix common OCR confusions
-    joined_text = joined_text.replace("e", ".").replace("o", "0").replace("l", "1").replace("|", "1")
+    # === Prevent false matches from "km/h"
+    joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
 
-    # Match decimal or spaced-out values like 4.97 km, 4 ,97 km, etc.
+    # New: Normalize multiple dots
+    joined_text = re.sub(r"\.{2,}", ".", joined_text)
+
+    # Patterns to catch '4.97 km', '4 97 km', or even '4.9.7 km'
     patterns = [
-        r"\b(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km\b",       # 4 ,97 km
-        r"\b(\d{1,3}[.,]\d{1,2})\s*km\b",                # 4.97 km
+        r"(\d{1,3}[.,]\d{1,2})\s*km",
+        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
     ]
 
     for pattern in patterns:
         matches = re.findall(pattern, joined_text)
         if matches:
             for m in matches:
+                dist_str = ".".join(part.strip() for part in m) if isinstance(m, tuple) else m.strip()
                 try:
-                    # Normalize number
-                    dist_str = ".".join(m) if isinstance(m, tuple) else m
-                    dist_str = dist_str.replace(",", ".").strip()
-                    dist = float(dist_str)
-                    if 0.5 < dist < 100:  # ignore outliers
+                    dist = float(dist_str.replace(",", "."))
+                    if 0.5 < dist < 100:
                         return f"{dist:.2f} km"
-                except ValueError:
+                except:
                     continue
     return None
+
+
