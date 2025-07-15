@@ -16,12 +16,39 @@ def clean_ocr_lines(text):
 
 
 
-def recover_distance_from_cleaned(cleaned_lines):
-    joined = " ".join(cleaned_lines)
-    match = re.search(r"(\d)\s*(\.|,)\s*(\d{1,2})\s*km", joined, re.IGNORECASE)
-    if match:
-        try:
-            return float(f"{match.group(1)}.{match.group(3)}")
-        except:
-            pass
+
+
+
+def recover_distance_from_lines(lines):
+    """
+    Try to find distance info in distorted OCR lines by looking for numeric patterns
+    close to 'km' or 'istance' keywords, and fix common OCR confusions.
+    """
+    joined_text = " ".join(lines).lower()
+
+    # Fix common OCR misreads for decimal/digits
+    joined_text = joined_text.replace("e", ".").replace("o", "0").replace("l", "1").replace("|", "1")
+
+    # Look for patterns like: digit(s) . digit(s) km or digit(s) km, allowing spaces and noise between
+    patterns = [
+        r"(\d{1,3}[.,]?\s?\d{1,2})\s*km",
+        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
+    ]
+
+    for pattern in patterns:
+        matches = re.findall(pattern, joined_text)
+        if matches:
+            # matches can be tuples or strings depending on pattern
+            for m in matches:
+                if isinstance(m, tuple):
+                    # Join parts e.g. ('4', '97') -> '4.97'
+                    dist_str = ".".join(part.strip() for part in m)
+                else:
+                    dist_str = m.strip()
+                try:
+                    dist = float(dist_str.replace(",", "."))
+                    if 0.1 < dist < 100:  # reasonable distance range
+                        return f"{dist:.2f} km"
+                except:
+                    continue
     return None
