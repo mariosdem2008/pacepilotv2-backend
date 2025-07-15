@@ -12,6 +12,10 @@ def recover_distance_from_lines(lines):
     # Fix common OCR confusions in numbers
     joined_text = joined_text.replace("e", ".").replace("o", "0").replace("l", "1").replace("|", "1")
 
+    # === Prevent false matches from "km/h" ===
+    # Replace "km/h" with placeholder to prevent false positives
+    joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
+
     # Patterns to catch things like '4.97 km' or '4 97 km'
     patterns = [
         r"(\d{1,3}[.,]?\s?\d{1,2})\s*km",
@@ -30,6 +34,7 @@ def recover_distance_from_lines(lines):
                 except:
                     continue
     return None
+
 
 
 def extract_summary(lines):
