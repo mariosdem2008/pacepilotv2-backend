@@ -7,27 +7,29 @@ def extract_splits(lines):
     split_index = 1
 
     for line in lines:
-        original_line = line.strip()
+        line = line.strip()
+        original_line = line
         try:
             match = re.match(
-                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?",
-                original_line
+                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
+                line
             )
             if not match:
                 match = re.match(
-                    r"^\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?",
-                    original_line
+                    r"^\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
+                    line
                 )
-                if not match:
+                if match:
+                    label = match.group(1)
+                    km = float(match.group(2).replace(",", ".")) if match.group(2) else 0.0
+                    time_str = match.group(3) or "0:00"
+                    pace_min = match.group(4) or "--"
+                    pace_sec = match.group(5) or "--"
+                else:
                     continue
-                label = match.group(1)
-                km = float(match.group(2).replace(",", "."))
-                time_str = match.group(3) or "0:00"
-                pace_min = match.group(4) or "--"
-                pace_sec = match.group(5) or "--"
             else:
                 label = match.group(2)
-                km = float(match.group(3).replace(",", "."))
+                km = float(match.group(3).replace(",", ".")) if match.group(3) else 0.0
                 time_str = match.group(4) or "0:00"
                 pace_min = match.group(5) or "--"
                 pace_sec = match.group(6) or "--"
