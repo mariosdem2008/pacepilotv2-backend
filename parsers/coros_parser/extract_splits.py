@@ -1,6 +1,6 @@
 import re
 
-def parse_splits(lines, distance="Unknown"):
+def extract_splits(lines, distance="Unknown"):
     splits = []
     total_split_distance = 0.0
     split_index = 1
