@@ -1,6 +1,7 @@
 import re
 from .utils import parse_time_to_sec, pace_to_seconds
-from parsers.utils.ocr_cleaner import recover_distance_from_cleaned
+from .utils.ocr_cleaner import recover_distance_from_lines
+
 
 def apply_fallbacks(summary, splits, total_split_distance, lines, text):
     time = summary["time"]

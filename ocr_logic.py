@@ -1,3 +1,4 @@
+#ocr_logic.py
 from parsers import coros_parser, garmin_parser, polar_parser, suunto_parser, apple_parser
 
 def extract_workout_data(image, source: str):
