@@ -1,3 +1,4 @@
+#fallbacks.py
 import re
 from .utils import parse_time_to_sec, pace_to_seconds
 from .utils.ocr_cleaner import recover_distance_from_lines
@@ -30,15 +31,24 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
         best_pace = f"{best_pace_seconds // 60}'{best_pace_seconds % 60:02d}"
 
     # fallback distance detection with your cleaner helper
-    if distance == "Unknown":
-        ocr_distance = recover_distance_from_lines(lines)
-        if total_split_distance > 0:
-            if not ocr_distance or abs(ocr_distance - total_split_distance) > 0.3:
-                distance = f"{total_split_distance:.2f} km"
-            else:
-                distance = f"{ocr_distance:.2f} km"
-        elif ocr_distance:
-            distance = f"{ocr_distance:.2f} km"
+    ocr_distance_str = recover_distance_from_lines(lines)
+
+    def parse_km(d):
+        try:
+            return float(str(d).replace("km", "").strip())
+        except:
+            return None
+
+    parsed_summary_distance = parse_km(distance)
+    parsed_ocr_distance = parse_km(ocr_distance_str)
+
+    # Override if:
+    # - summary distance is unknown
+    # - or OCR distance is significantly different from summary (e.g. > 0.3km difference)
+    if parsed_ocr_distance:
+        if parsed_summary_distance is None or abs(parsed_summary_distance - parsed_ocr_distance) > 0.3:
+            distance = f"{parsed_ocr_distance:.2f} km"
+
 
     return {
         "distance": distance,
