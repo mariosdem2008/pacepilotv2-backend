@@ -1,5 +1,6 @@
 import re
 from .utils import parse_time_to_sec, pace_to_seconds
+from parsers.utils.ocr_cleaner import recover_distance_from_cleaned
 
 def apply_fallbacks(summary, splits, total_split_distance, lines, text):
     time = summary["time"]
@@ -27,15 +28,9 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
     if best_pace == "Unknown" and best_pace_seconds:
         best_pace = f"{best_pace_seconds // 60}'{best_pace_seconds % 60:02d}"
 
-    # fallback distance detection
+    # fallback distance detection with your cleaner helper
     if distance == "Unknown":
-        ocr_distance = None
-        for line in lines:
-            clean_line = re.sub(r"\s+", "", line.replace("e", ".").replace("O", "0").replace("l", "1").replace("|", "1"))
-            match = re.search(r"(\d{1,3}[.,]\d{1,2})km", clean_line, re.IGNORECASE)
-            if match:
-                ocr_distance = float(match.group(1).replace(",", "."))
-                break
+        ocr_distance = recover_distance_from_cleaned(lines)
         if total_split_distance > 0:
             if not ocr_distance or abs(ocr_distance - total_split_distance) > 0.3:
                 distance = f"{total_split_distance:.2f} km"

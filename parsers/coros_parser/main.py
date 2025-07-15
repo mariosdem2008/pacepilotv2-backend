@@ -4,21 +4,23 @@ from .extract_hr_zones import extract_hr_zones
 from .extract_summary import extract_summary
 from .extract_splits import extract_splits
 from .fallbacks import apply_fallbacks
+from parsers.utils.ocr_cleaner import clean_ocr_lines  # no need to import recover_distance here
 
 def coros_parser(image):
-    text = pytesseract.image_to_string(image, config='--psm 6')
+    raw_text = pytesseract.image_to_string(image, config='--psm 6')
     print("===== OCR TEXT START =====", flush=True)
-    print(text, flush=True)
+    print(raw_text, flush=True)
     print("===== OCR TEXT END =====", flush=True)
 
-    text = text.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
-    lines = text.splitlines()
+    # Clean OCR text before splitting
+    lines = clean_ocr_lines(raw_text)
 
     hr_zones = extract_hr_zones(lines)
     summary = extract_summary(lines)
     splits, total_split_distance = extract_splits(lines)
 
-    final_result = apply_fallbacks(summary, splits, total_split_distance, lines, text)
+    # Pass cleaned lines and raw_text if needed to fallbacks
+    final_result = apply_fallbacks(summary, splits, total_split_distance, lines, raw_text)
 
     final_result["splits"] = splits
     final_result["hr_zones"] = hr_zones if hr_zones else None
