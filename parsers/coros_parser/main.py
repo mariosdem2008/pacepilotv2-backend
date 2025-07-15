@@ -4,7 +4,8 @@ from .extract_hr_zones import extract_hr_zones
 from .extract_summary import extract_summary
 from .extract_splits import extract_splits
 from .fallbacks import apply_fallbacks
-from .utils import clean_ocr_lines
+from .utils.ocr_cleaner import clean_ocr_lines
+
 
 def coros_parser(image):
     raw_text = pytesseract.image_to_string(image, config='--psm 6')
