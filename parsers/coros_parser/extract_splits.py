@@ -101,8 +101,6 @@ def extract_splits(lines):
 
     current_split_entries = set()
     for i, entry in enumerate(parsed_lines):
-        total_split_distance += entry["km"]  # ✅ Count ALL km (not just unique rows)
-
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
         if entry_key not in current_split_entries:
             splits.append({
@@ -114,11 +112,11 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-            split_index += 1
-            current_split_entries.clear()
+        total_split_distance += entry["km"]
+        split_index += 1
+        current_split_entries.clear()
 
-
-        return splits, total_split_distance
+    return splits, total_split_distance
 
 def parse_coros_ocr(lines):
     splits, total_split_distance = extract_splits(lines)
