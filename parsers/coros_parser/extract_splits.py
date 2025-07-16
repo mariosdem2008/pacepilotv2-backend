@@ -60,6 +60,7 @@ def extract_splits(lines):
     splits = []
     total_split_distance = 0.0
     split_index = 1
+    is_lap_style = False
 
     # Pattern 1: Run/Rest style
     run_rest_pattern = re.compile(
@@ -67,9 +68,9 @@ def extract_splits(lines):
         re.IGNORECASE
     )
 
-    # Pattern 2: Lap style
+    # Pattern 2: Lap style (loosened to allow "UN BP" or any non-time chunk)
     lap_pattern = re.compile(
-        r"^\s*(\d+)\s+([\d.,]+)\s*km\s+([\d:.]+)\s+(\d{1,2})['’](\d{2})",
+        r"^\s*(\d+)\s+([\d.,]+)\s*km\s+([^\s]+(?: [^\s]+)?)\s+(\d{1,2})['’](\d{2})",
         re.IGNORECASE
     )
 
@@ -87,9 +88,10 @@ def extract_splits(lines):
             match = lap_pattern.match(line)
             if not match:
                 continue
+            is_lap_style = True  # Mark that this is Lap style
             label = "Lap"
             km = float(match.group(2).replace(",", ".")) if match.group(2) else 0.0
-            time_str = match.group(3) or "0:00"
+            time_str = match.group(3)
             pace_str = f"{match.group(4)}'{match.group(5)}"
 
         parsed_lines.append({
@@ -100,7 +102,7 @@ def extract_splits(lines):
         })
 
     current_split_entries = set()
-    for i, entry in enumerate(parsed_lines):
+    for entry in parsed_lines:
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
         if entry_key not in current_split_entries:
             splits.append({
@@ -112,15 +114,12 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-            # Look ahead: if the next entry is a "Run", increment split_index
-            next_entry = parsed_lines[i + 1] if i + 1 < len(parsed_lines) else None
-            if next_entry and next_entry["label"].lower() == "run":
+            if entry["label"].lower() == "run":
                 split_index += 1
+            elif is_lap_style:
+                split_index += 1  # Increment for each Lap entry only if it's Lap style
 
-        # Add distance regardless of duplicate or not
         total_split_distance += entry["km"]
-
-    # No clearing current_split_entries inside loop!
 
     return splits, total_split_distance
 
