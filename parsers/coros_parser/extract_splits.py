@@ -1,14 +1,24 @@
 import re
+import hashlib
+
+def normalize_line_for_hash(line):
+    return re.sub(r'\s+', ' ', line.strip().lower())
 
 def extract_splits(lines):
     parsed_lines = []
-    splits = []
+    seen_hashes = set()
     total_split_distance = 0.0
     split_index = 1
 
     for line in lines:
         line = line.strip()
-        original_line = line
+        norm_line = normalize_line_for_hash(line)
+        line_hash = hashlib.md5(norm_line.encode()).hexdigest()
+        
+        if line_hash in seen_hashes:
+            continue
+        seen_hashes.add(line_hash)
+
         try:
             match = re.match(
                 r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
@@ -45,7 +55,9 @@ def extract_splits(lines):
         except:
             continue
 
+    splits = []
     current_split_entries = set()
+
     for i, entry in enumerate(parsed_lines):
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
         if entry_key not in current_split_entries:
@@ -60,6 +72,7 @@ def extract_splits(lines):
 
         total_split_distance += entry["km"]
 
+        # Start new split block after every Run
         if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
             split_index += 1
             current_split_entries.clear()
