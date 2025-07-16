@@ -54,5 +54,14 @@ def recover_distance_from_lines(lines):
     return None
 
 
+if __name__ == "__main__":
+    lines = [
+        "10:12 oll LTE @@)",
+        "< Run -",
+        "11 Jul 2025 at 7:13PM",
+        "5 e 3 3 km ®)",
+        "Distance Marios",
+        # ...rest omitted for brevity
+    ]
 
-
+    print(recover_distance_from_lines(lines))  # Should output: 5.33 km
