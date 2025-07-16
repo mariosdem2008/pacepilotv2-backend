@@ -69,7 +69,7 @@ def extract_splits(lines):
         re.IGNORECASE
     )
 
-    # Pattern 2: Lap style (loosened to allow "UN BP" or any non-time chunk)
+    # Pattern 2: Lap style (loosened to allow non-standard time values)
     lap_pattern = re.compile(
         r"^\s*(\d+)\s+([\d.,]+)\s*km\s+([^\s]+(?: [^\s]+)?)\s+(\d{1,2})['’](\d{2})",
         re.IGNORECASE
@@ -104,13 +104,8 @@ def extract_splits(lines):
         })
 
     current_split_entries = set()
-    for i, entry in enumerate(parsed_lines):
-        next_entry = parsed_lines[i + 1] if i + 1 < len(parsed_lines) else None
 
-        # Only increment BEFORE a Run entry (only for Run/Rest layout)
-        if is_run_rest_style and next_entry and next_entry["label"].lower() == "run":
-            split_index += 1
-
+    for entry in parsed_lines:
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
         if entry_key not in current_split_entries:
             splits.append({
@@ -122,8 +117,9 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-            # For Lap-style, always increment split index
             if is_lap_style:
+                split_index += 1
+            elif is_run_rest_style and entry["label"].lower() == "run":
                 split_index += 1
 
         total_split_distance += entry["km"]
