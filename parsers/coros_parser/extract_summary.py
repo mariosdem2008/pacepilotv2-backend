@@ -34,7 +34,7 @@ def extract_summary(lines):
                         pass
                 else:
                     # Fallback: look for any floating number + 'km' in safe contexts
-                    joined_text = re.sub(r"\b\d{1,3}[.,]?\d{0,2}?\s*km/h\b", "", joined_text)
+                    match = re.search(r"\b(\d{1,3})[.,](\d{1,2})\s*km\b", line_clean)
                     if match:
                         try:
                             dist_val = float(f"{match.group(1)}.{match.group(2)}")

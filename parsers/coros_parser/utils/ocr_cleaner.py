@@ -27,7 +27,7 @@ def recover_distance_from_lines(lines):
     joined_text = re.sub(r"(?<=\d)[e/](?=\d)", ".", joined_text)
 
     # Remove km/h to avoid false matches
-    joined_text = re.sub(r"\b\d{1,3}[.,]?\d{0,2}?\s*km/h\b", "", joined_text)
+    joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
 
     # Now find all km distances in flexible formats:
     pattern = r"((?:\d+[., ]?)+)\s*km"
