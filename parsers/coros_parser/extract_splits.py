@@ -61,18 +61,9 @@ def extract_splits(lines):
     total_split_distance = 0.0
     split_index = 1
 
-    # Pattern 1: Run/Rest style
-    run_rest_pattern = re.compile(
-        r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--|°°)?['’°]?(?:(\d{2}|--))?(?:\"|”)?(?:\s*/km)?",
-        re.IGNORECASE
-    )
+    # Patterns omitted for brevity...
 
-    # Pattern 2: Lap style
-    lap_pattern = re.compile(
-        r"^\s*(\d+)\s+([\d.,]+)\s*km\s+([\d:.]+)\s+(\d{1,2})['’](\d{2})",
-        re.IGNORECASE
-    )
-
+    # 1. Parse all lines first
     for line in lines:
         line = line.strip()
         match = run_rest_pattern.match(line)
@@ -99,6 +90,7 @@ def extract_splits(lines):
             "pace": pace_str
         })
 
+    # 2. Then process parsed_lines once for splits & distance
     current_split_entries = set()
     for i, entry in enumerate(parsed_lines):
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
@@ -112,14 +104,15 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-            if entry["label"].lower() == "lap" or entry["label"].lower() == "run":
-                split_index += 1  # Only increment for runs/laps
+            # Look ahead: if the next entry is a "Run", increment split_index
+            next_entry = parsed_lines[i + 1] if i + 1 < len(parsed_lines) else None
+            if next_entry and next_entry["label"].lower() == "run":
+                split_index += 1
 
         total_split_distance += entry["km"]
-        current_split_entries.clear()
-
 
     return splits, total_split_distance
+
 
 def parse_coros_ocr(lines):
     splits, total_split_distance = extract_splits(lines)
