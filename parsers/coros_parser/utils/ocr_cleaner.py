@@ -21,27 +21,20 @@ def recover_distance_from_lines(lines):
     joined_text = " ".join(lines).lower()
 
     # Normalize common OCR misreads
-    # Replace OCR confusions globally
     joined_text = joined_text.replace("o", "0").replace("l", "1").replace("|", "1").replace("/", ".")
-    
-    # Replace 'e' with '.' if surrounded by digits or spaces (loose)
-    joined_text = re.sub(r"(?<=\d)\s*e\s*(?=\d)", ".", joined_text)
-    
+
+    # Fix 'e' or '/' between digits → '.'
+    joined_text = re.sub(r"(?<=\d)[e/](?=\d)", ".", joined_text)
+
     # Remove km/h to avoid false matches
     joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
 
-    # Remove multiple dots or commas
-    joined_text = re.sub(r"[.,]{2,}", ".", joined_text)
-
     # Now find all km distances in flexible formats:
-    # Allow numbers with digits, dots, spaces, or commas before 'km'
     pattern = r"((?:\d+[., ]?)+)\s*km"
 
     matches = re.findall(pattern, joined_text)
     for match in matches:
-        # Remove spaces and commas, replace commas with dots
         num_str = match.replace(" ", "").replace(",", ".")
-        # Remove any leftover non-digit/dot chars (like ®)
         num_str = re.sub(r"[^\d.]", "", num_str)
 
         try:
