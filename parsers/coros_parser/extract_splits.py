@@ -1,14 +1,25 @@
 import re
 
-def sort_lines_by_prefix(lines):
-    def extract_prefix_number(line):
-        match = re.match(r"^\s*(\d+)", line)
-        return int(match.group(1)) if match else float('inf')
-    
-    return sorted(lines, key=extract_prefix_number)
+def extract_prefix_number(line):
+    match = re.match(r"^\s*(\d+)", line)
+    return int(match.group(1)) if match else None
+
+def reorder_lines_by_min_prefix(lines):
+    # Collect lines with prefix numbers
+    lines_with_prefix = [(extract_prefix_number(line), i, line) for i, line in enumerate(lines)]
+    lines_with_prefix = [(num, i, line) for num, i, line in lines_with_prefix if num is not None]
+
+    if not lines_with_prefix:
+        return lines  # nothing to sort
+
+    # Find line with the lowest prefix number
+    min_prefix, min_index, _ = min(lines_with_prefix, key=lambda x: x[0])
+
+    # Reorder: from the line with the lowest prefix onward, then the lines before
+    return lines[min_index:] + lines[:min_index]
 
 def extract_splits(lines):
-    lines = sort_lines_by_prefix(lines)
+    lines = reorder_lines_by_min_prefix(lines)
 
     parsed_lines = []
     splits = []
@@ -18,9 +29,8 @@ def extract_splits(lines):
     for line in lines:
         line = line.strip()
         try:
-            # Match with or without numeric prefix
             match = re.match(
-                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--|°°)?['’](\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
+                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--|°°)?['’°]?(?:(\d{2}|--))?(?:\"|”)?(?:\s*/km)?",
                 line
             )
             if not match:
@@ -29,11 +39,10 @@ def extract_splits(lines):
             label = match.group(2)
             km = float(match.group(3).replace(",", ".")) if match.group(3) else 0.0
             time_str = match.group(4) or "0:00"
-            pace_min = match.group(5) or "--"
-            pace_sec = match.group(6) or "--"
+            pace_min = (match.group(5) or "--").replace("°", "").replace("’", "").replace("'", "")
+            pace_sec = (match.group(6) or "--").replace("°", "").replace("’", "").replace("\"", "")
 
-            # Normalize pace string
-            pace_str = "-- /km" if pace_min == "--" or pace_sec == "--" else f"{pace_min.replace('°', '')}'{pace_sec.replace('°', '')}"
+            pace_str = "-- /km" if pace_min == "--" or pace_sec == "--" else f"{pace_min}'{pace_sec}"
 
             parsed_lines.append({
                 "label": label,
@@ -41,7 +50,6 @@ def extract_splits(lines):
                 "time": time_str,
                 "pace": pace_str
             })
-
         except:
             continue
 
@@ -60,7 +68,7 @@ def extract_splits(lines):
 
         total_split_distance += entry["km"]
 
-        # Increment split on next "Run"
+        # Start a new split after each Run
         if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
             split_index += 1
             current_split_entries.clear()
