@@ -15,9 +15,6 @@ def reorder_lines_by_min_prefix(lines):
     return lines[min_index:] + lines[:min_index]
 
 def extract_summary_info(text):
-    """
-    Extract overall workout info from summary-type OCR.
-    """
     distance = None
     time = None
     avg_pace = None
@@ -25,25 +22,18 @@ def extract_summary_info(text):
 
     for line in text:
         line = line.strip()
-        # Distance
         if distance is None:
             match = re.search(r"([\d.,]+)\s*km", line, re.IGNORECASE)
             if match:
                 distance = f"{match.group(1).replace(',', '.')} km"
-
-        # Total Time
         if time is None:
             match = re.search(r"\b(\d{1,2}:\d{2}(?::\d{2})?)\b", line)
             if match:
                 time = match.group(1)
-
-        # Avg Pace
         if avg_pace is None:
             match = re.search(r"Avg(?:\.|erage)?\s*[:]?[\s]*([\d]{1,2})[‘'’]?(\d{2})", line)
             if match:
                 avg_pace = f"{match.group(1)}'{match.group(2)}"
-
-        # Best Pace
         if best_pace is None:
             match = re.search(r"Best.*?([\d]{1,2})[‘'’]?(\d{2})", line)
             if match:
@@ -52,8 +42,8 @@ def extract_summary_info(text):
     return {
         "distance": distance,
         "time": time,
-        "pace": avg_pace,
-        "best_pace": best_pace,
+        "pace": avg_pace or "Unknown",
+        "best_pace": best_pace or "Unknown",
         "splits": [],
         "avg_hr": None,
         "max_hr": None,
@@ -71,24 +61,36 @@ def extract_splits(lines):
     total_split_distance = 0.0
     split_index = 1
 
-    split_pattern = re.compile(
+    # Pattern 1: Run/Rest style
+    run_rest_pattern = re.compile(
         r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--|°°)?['’°]?(?:(\d{2}|--))?(?:\"|”)?(?:\s*/km)?",
+        re.IGNORECASE
+    )
+
+    # Pattern 2: Lap style
+    lap_pattern = re.compile(
+        r"^\s*(\d+)\s+([\d.,]+)\s*km\s+([\d:.]+)\s+(\d{1,2})['’](\d{2})",
         re.IGNORECASE
     )
 
     for line in lines:
         line = line.strip()
-        match = split_pattern.match(line)
-        if not match:
-            continue
-
-        label = match.group(2)
-        km = float(match.group(3).replace(",", ".")) if match.group(3) else 0.0
-        time_str = match.group(4) or "0:00"
-        pace_min = (match.group(5) or "--").replace("°", "").replace("’", "").replace("'", "")
-        pace_sec = (match.group(6) or "--").replace("°", "").replace("’", "").replace("\"", "")
-
-        pace_str = "-- /km" if pace_min == "--" or pace_sec == "--" else f"{pace_min}'{pace_sec}"
+        match = run_rest_pattern.match(line)
+        if match:
+            label = match.group(2)
+            km = float(match.group(3).replace(",", ".")) if match.group(3) else 0.0
+            time_str = match.group(4) or "0:00"
+            pace_min = (match.group(5) or "--").replace("°", "").replace("’", "").replace("'", "")
+            pace_sec = (match.group(6) or "--").replace("°", "").replace("’", "").replace("\"", "")
+            pace_str = "-- /km" if pace_min == "--" or pace_sec == "--" else f"{pace_min}'{pace_sec}"
+        else:
+            match = lap_pattern.match(line)
+            if not match:
+                continue
+            label = "Lap"
+            km = float(match.group(2).replace(",", ".")) if match.group(2) else 0.0
+            time_str = match.group(3) or "0:00"
+            pace_str = f"{match.group(4)}'{match.group(5)}"
 
         parsed_lines.append({
             "label": label,
@@ -111,18 +113,12 @@ def extract_splits(lines):
             current_split_entries.add(entry_key)
 
         total_split_distance += entry["km"]
-
-        if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
-            split_index += 1
-            current_split_entries.clear()
+        split_index += 1
+        current_split_entries.clear()
 
     return splits, total_split_distance
 
 def parse_coros_ocr(lines):
-    """
-    Try to extract structured data from a list of OCR lines (strings).
-    Will fall back to summary parsing if split table fails.
-    """
     splits, total_split_distance = extract_splits(lines)
 
     if splits:
