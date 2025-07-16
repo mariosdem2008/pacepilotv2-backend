@@ -61,9 +61,18 @@ def extract_splits(lines):
     total_split_distance = 0.0
     split_index = 1
 
-    # Patterns omitted for brevity...
+    # Pattern 1: Run/Rest style
+    run_rest_pattern = re.compile(
+        r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--|°°)?['’°]?(?:(\d{2}|--))?(?:\"|”)?(?:\s*/km)?",
+        re.IGNORECASE
+    )
 
-    # 1. Parse all lines first
+    # Pattern 2: Lap style
+    lap_pattern = re.compile(
+        r"^\s*(\d+)\s+([\d.,]+)\s*km\s+([\d:.]+)\s+(\d{1,2})['’](\d{2})",
+        re.IGNORECASE
+    )
+
     for line in lines:
         line = line.strip()
         match = run_rest_pattern.match(line)
@@ -90,7 +99,6 @@ def extract_splits(lines):
             "pace": pace_str
         })
 
-    # 2. Then process parsed_lines once for splits & distance
     current_split_entries = set()
     for i, entry in enumerate(parsed_lines):
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
@@ -109,7 +117,10 @@ def extract_splits(lines):
             if next_entry and next_entry["label"].lower() == "run":
                 split_index += 1
 
+        # Add distance regardless of duplicate or not
         total_split_distance += entry["km"]
+
+    # No clearing current_split_entries inside loop!
 
     return splits, total_split_distance
 
