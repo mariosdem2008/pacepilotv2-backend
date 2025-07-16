@@ -114,8 +114,8 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-        split_index += 1
-        current_split_entries.clear()
+            split_index += 1
+            current_split_entries.clear()
 
 
         return splits, total_split_distance
