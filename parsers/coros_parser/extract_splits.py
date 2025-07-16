@@ -61,6 +61,7 @@ def extract_splits(lines):
     total_split_distance = 0.0
     split_index = 1
     is_lap_style = False
+    is_run_rest_style = False
 
     # Pattern 1: Run/Rest style
     run_rest_pattern = re.compile(
@@ -78,6 +79,7 @@ def extract_splits(lines):
         line = line.strip()
         match = run_rest_pattern.match(line)
         if match:
+            is_run_rest_style = True
             label = match.group(2)
             km = float(match.group(3).replace(",", ".")) if match.group(3) else 0.0
             time_str = match.group(4) or "0:00"
@@ -88,7 +90,7 @@ def extract_splits(lines):
             match = lap_pattern.match(line)
             if not match:
                 continue
-            is_lap_style = True  # Mark that this is Lap style
+            is_lap_style = True
             label = "Lap"
             km = float(match.group(2).replace(",", ".")) if match.group(2) else 0.0
             time_str = match.group(3)
@@ -102,7 +104,13 @@ def extract_splits(lines):
         })
 
     current_split_entries = set()
-    for entry in parsed_lines:
+    for i, entry in enumerate(parsed_lines):
+        next_entry = parsed_lines[i + 1] if i + 1 < len(parsed_lines) else None
+
+        # Only increment BEFORE a Run entry (only for Run/Rest layout)
+        if is_run_rest_style and next_entry and next_entry["label"].lower() == "run":
+            split_index += 1
+
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
         if entry_key not in current_split_entries:
             splits.append({
@@ -114,14 +122,14 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-            if entry["label"].lower() == "run":
+            # For Lap-style, always increment split index
+            if is_lap_style:
                 split_index += 1
-            elif is_lap_style:
-                split_index += 1  # Increment for each Lap entry only if it's Lap style
 
         total_split_distance += entry["km"]
 
     return splits, total_split_distance
+
 
 
 def parse_coros_ocr(lines):
