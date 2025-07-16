@@ -13,28 +13,26 @@ def clean_ocr_lines(text):
     return cleaned_lines
 
 
-import re
-
 def recover_distance_from_lines(lines):
     """
     Attempt to recover a decimal distance from noisy OCR lines.
     Joins all lines and looks for number + km pattern allowing for OCR noise.
-    Picks the smallest plausible candidate to avoid km/h false positives.
     """
     joined_text = " ".join(lines).lower()
 
     # Normalize common OCR misreads
     joined_text = joined_text.replace("o", "0").replace("l", "1").replace("|", "1").replace("/", ".")
+
+    # Fix 'e' or '/' between digits → '.'
     joined_text = re.sub(r"(?<=\d)[e/](?=\d)", ".", joined_text)
 
-    # Remove km/h values completely
+    # Remove km/h to avoid false matches
     joined_text = re.sub(r"\b\d{1,3}[.,]?\d{0,2}?\s*km/h\b", "", joined_text)
 
-    # Now find all patterns like "4.9 km", "758 km", etc.
+    # Now find all km distances in flexible formats:
     pattern = r"((?:\d+[., ]?)+)\s*km"
-    matches = re.findall(pattern, joined_text)
 
-    distances = []
+    matches = re.findall(pattern, joined_text)
     for match in matches:
         num_str = match.replace(" ", "").replace(",", ".")
         num_str = re.sub(r"[^\d.]", "", num_str)
@@ -42,15 +40,10 @@ def recover_distance_from_lines(lines):
         try:
             dist = float(num_str)
             if 0.5 < dist < 100:
-                distances.append(dist)
+                return f"{dist:.2f} km"
         except:
             continue
 
-    if distances:
-        # Heuristic: return the **smallest plausible** match
-        return f"{min(distances):.2f} km"
-
     return None
-
 
 
