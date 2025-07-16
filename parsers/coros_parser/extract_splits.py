@@ -112,9 +112,12 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
+            if entry["label"].lower() == "lap" or entry["label"].lower() == "run":
+                split_index += 1  # Only increment for runs/laps
+
         total_split_distance += entry["km"]
-        split_index += 1
         current_split_entries.clear()
+
 
     return splits, total_split_distance
 
