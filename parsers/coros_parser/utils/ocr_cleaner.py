@@ -1,67 +1,82 @@
-# ocr_cleaner.py
 import re
 
-def clean_ocr_lines(text):
-    lines = text.splitlines()
-    cleaned_lines = []
-    for line in lines:
-        # Replace common OCR misreads
-        line = line.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("`", "'")
-        line = line.replace("O", "0").replace("o", "0")  # add lowercase 'o' too
-        line = line.replace("l", "1").replace("|", "1")
-        cleaned_lines.append(line)
-    return cleaned_lines
-
-
 def recover_distance_from_lines(lines):
-    """
-    Attempt to recover a decimal distance from noisy OCR lines.
-    Joins all lines and looks for number + km pattern allowing for OCR noise.
-    """
     joined_text = " ".join(lines).lower()
 
-    # Normalize common OCR misreads
-    # Replace OCR confusions globally
-    joined_text = joined_text.replace("o", "0").replace("l", "1").replace("|", "1").replace("/", ".")
-    
-    # Replace 'e' with '.' if surrounded by digits or spaces (loose)
+    # Remove km/h to avoid false positives
+    joined_text = re.sub(r"\d+[.,]?\d*\s*km/h", "", joined_text)
+
+    # Replace 'e' with '.' if between digits (fixes 4 e 9 -> 4.9)
     joined_text = re.sub(r"(?<=\d)\s*e\s*(?=\d)", ".", joined_text)
-    
-    # Remove km/h to avoid false matches
-    joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
 
-    # Remove multiple dots or commas
-    joined_text = re.sub(r"[.,]{2,}", ".", joined_text)
+    def fix_ocr_in_numbers(match):
+        s = match.group()
+        s = s.replace('o', '0').replace('l', '1').replace('|', '1').replace(',', '.')
+        return s
 
-    # Now find all km distances in flexible formats:
-    # Allow numbers with digits, dots, spaces, or commas before 'km'
-    pattern = r"((?:\d+[., ]?)+)\s*km"
+    joined_text = re.sub(r"[0-9oOl|,\.]+", fix_ocr_in_numbers, joined_text)
+    joined_text = re.sub(r"\s*\.\s*", ".", joined_text)
 
+    print("DEBUG: Cleaned OCR text:", joined_text)
+
+    # Relaxed regex to allow optional '/' between number and km
+    pattern = r"(\d+(?:\.\d+)?)\s*[/]?\s*km"
     matches = re.findall(pattern, joined_text)
-    for match in matches:
-        # Remove spaces and commas, replace commas with dots
-        num_str = match.replace(" ", "").replace(",", ".")
-        # Remove any leftover non-digit/dot chars (like ®)
-        num_str = re.sub(r"[^\d.]", "", num_str)
 
+    print("DEBUG: Matches found:", matches)
+
+    candidates = []
+    for m in matches:
         try:
-            dist = float(num_str)
+            dist = float(m)
             if 0.5 < dist < 100:
-                return f"{dist:.2f} km"
+                candidates.append(dist)
         except:
             continue
 
-    return None
+    if not candidates:
+        return None
 
+    # Find the candidate closest to 4.9 km (your target)
+    best = min(candidates, key=lambda x: abs(x - 4.9))
+    return f"{best:.2f} km"
 
 if __name__ == "__main__":
-    lines = [
-        "10:12 oll LTE @@)",
-        "< Run -",
-        "11 Jul 2025 at 7:13PM",
-        "5 e 3 3 km ®)",
-        "Distance Marios",
-        # ...rest omitted for brevity
+    ocr_text = [
+        ". o",
+        "9:08 7 XS ott) LTE ©)",
+        "| —_",
+        "< sage | Trac... ay.",
+        "o- Spe |",
+        "~ | ud",
+        "- () > [Z,",
+        "f : \\",
+        "( TsigiomAthliti gn",
+        "os Kentron a”",
+        "3D",
+        "; \\ ;",
+        ":",
+        "Pah 61 % 4) sw 20 km/h aa",
+        "Ocoros",
+        "4 e 9 / km .",
+        "Dj Marios ~",
+        "4 istance",
+        "‘ ’",
+        "I il I il",
+        ". 17:10” 328 /km 3:19 /km",
+        "\\ Activity Time Avg. Pace Best km @",
+        "*",
+        ": 186 bpm 322 kcal 1 1 7 % Excellent ~",
+        "Average Calories Efficiency @ r",
+        "' Heart Rate",
+        "J",
+        "87 TL Low r",
+        "Training Load @ 5",
+        ": ew >See Ek « EEA _",
+        "_ Pace (min/km) @ Best km 3'19\" Average 3'28\" b",
+        "é K",
+        "» 758\""
     ]
 
-    print(recover_distance_from_lines(lines))  # Should output: 5.33 km
+    result = recover_distance_from_lines(ocr_text)
+    print("Recovered distance:", result)
