@@ -1,7 +1,8 @@
 #fallbacks.py
 import re
-from .utils import parse_time_to_sec, pace_to_seconds
-from .utils.ocr_cleaner import recover_distance_from_lines
+from utils import parse_time_to_sec, pace_to_seconds
+from utils.ocr_cleaner import recover_distance_from_lines
+
 
 
 def apply_fallbacks(summary, splits, total_split_distance, lines, text):
@@ -10,7 +11,8 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
     pace = summary["pace"]
     best_pace = summary["best_pace"]
 
-    total_seconds = sum(parse_time_to_sec(s["time"]) for s in splits)
+    total_seconds = sum(parse_time_to_sec(s.get("time", "0:00")) for s in splits)
+
 
     if time == "0:00" and total_seconds > 0:
         minutes = int(total_seconds // 60)
@@ -23,7 +25,7 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
 
     best_pace_seconds = None
     for s in splits:
-        sec = pace_to_seconds(s["pace"])
+        sec = pace_to_seconds(s.get("pace", "Unknown"))
         if sec is not None and (best_pace_seconds is None or sec < best_pace_seconds):
             best_pace_seconds = sec
 
@@ -64,8 +66,8 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
         "time": time,
         "pace": pace,
         "best_pace": best_pace,
-        "avg_hr": summary["avg_hr"],
-        "max_hr": summary["max_hr"],
+        "avg_hr": summary.get("avg_hr"),
+        "max_hr": summary.get("max_hr"),
         "cadence_avg": None,
         "cadence_max": None,
         "stride_length_avg": None
