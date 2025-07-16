@@ -11,6 +11,7 @@ def clean_ocr_lines(text):
         cleaned_lines.append(line)
     return cleaned_lines
 
+
 def recover_distance_from_lines(lines):
     joined_text = " ".join(lines).lower()
 
@@ -51,5 +52,3 @@ def recover_distance_from_lines(lines):
     # Find the candidate closest to 4.9 km (your target)
     best = min(candidates, key=lambda x: abs(x - 4.9))
     return f"{best:.2f} km"
-
-
