@@ -108,6 +108,9 @@ def extract_splits(lines):
     current_split_entries = set()
 
     for entry in parsed_lines:
+        if is_run_rest_style and entry["label"].lower() == "run":
+            split_index += 1  # increment BEFORE appending Run
+
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
         if entry_key not in current_split_entries:
             splits.append({
@@ -119,11 +122,9 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-            # INCREMENT only if this is a Run and in Run/Rest style
-            if is_run_rest_style and entry["label"].lower() == "run":
+            if is_lap_style:
                 split_index += 1
-            elif is_lap_style:
-                split_index += 1  # every Lap gets unique split
+
 
         total_split_distance += entry["km"]
 
