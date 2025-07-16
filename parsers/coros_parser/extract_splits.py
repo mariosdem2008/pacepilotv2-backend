@@ -59,7 +59,6 @@ def extract_splits(lines):
     parsed_lines = []
     splits = []
     total_split_distance = 0.0
-    split_index = 1
     is_lap_style = False
     is_run_rest_style = False
 
@@ -94,7 +93,6 @@ def extract_splits(lines):
             time_str = match.group(3)
             pace_str = f"{match.group(4)}'{match.group(5)}"
 
-        # Optionally skip 0.00 km entries
         if km == 0.0:
             continue
 
@@ -106,10 +104,18 @@ def extract_splits(lines):
         })
 
     current_split_entries = set()
+    split_index = 1
+    next_split_index = 1
 
     for entry in parsed_lines:
-        if is_run_rest_style and entry["label"].lower() == "run":
-            split_index += 1  # increment BEFORE appending Run
+        label = entry["label"].lower()
+
+        if is_run_rest_style and label == "run":
+            split_index = next_split_index
+            next_split_index += 1
+        elif is_lap_style:
+            split_index = next_split_index
+            next_split_index += 1
 
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
         if entry_key not in current_split_entries:
@@ -122,15 +128,9 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-            if is_lap_style:
-                split_index += 1
-
-
         total_split_distance += entry["km"]
 
     return splits, total_split_distance
-
-
 
 def parse_coros_ocr(lines):
     splits, total_split_distance = extract_splits(lines)
