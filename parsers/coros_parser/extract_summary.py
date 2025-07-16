@@ -1,7 +1,6 @@
-#extract_summary.py
+# extract_summary.py
 import re
 from .utils.ocr_cleaner import recover_distance_from_lines  # ✅ MOVE TO THE TOP
-
 
 
 def extract_summary(lines):
@@ -12,6 +11,12 @@ def extract_summary(lines):
     avg_hr = None
     max_hr = None
 
+    # === Distance fallback (from joined noisy lines) ===
+    # Prefer this first because it handles OCR noise better
+    recovered = recover_distance_from_lines(lines)
+    if recovered:
+        distance = recovered
+
     for line in lines:
         line_clean = line.replace("’", "'").replace("`", "'")
 
@@ -20,11 +25,16 @@ def extract_summary(lines):
             if match:
                 time = match.group(1)
 
+        # Only update distance if not already set by fallback
         if distance == "Unknown":
             # Skip obvious speed indicators like km/h or pace
             if "km/h" not in line_clean.lower():
                 # First try with keywords
-                match = re.search(r"\b(?:distance|istance|stance)\b[^0-9]*?(\d{1,3})[.,](\d{1,2})\s*km", line_clean, re.IGNORECASE)
+                match = re.search(
+                    r"\b(?:distance|istance|stance)\b[^0-9]*?(\d{1,3})[.,](\d{1,2})\s*km",
+                    line_clean,
+                    re.IGNORECASE,
+                )
                 if match:
                     try:
                         dist_val = float(f"{match.group(1)}.{match.group(2)}")
@@ -34,7 +44,9 @@ def extract_summary(lines):
                         pass
                 else:
                     # Fallback: look for any floating number + 'km' in safe contexts
-                    match = re.search(r"\b(\d{1,3})[.,](\d{1,2})\s*km\b", line_clean)
+                    if "km/h" not in line_clean.lower():
+                        match = re.search(r"\b(\d{1,3})[.,](\d{1,2})\s*km\b", line_clean)
+
                     if match:
                         try:
                             dist_val = float(f"{match.group(1)}.{match.group(2)}")
@@ -43,7 +55,6 @@ def extract_summary(lines):
                                 distance = f"{dist_val:.2f} km"
                         except:
                             pass
-
 
         if pace == "Unknown":
             match = re.search(r"Average\s+(\d{1,2})'(\d{2})", line_clean)
@@ -61,12 +72,6 @@ def extract_summary(lines):
                 max_hr = int(match.group(1))
                 avg_hr = int(match.group(2))
 
-    # === Distance fallback (from joined noisy lines) ===
-    if distance == "Unknown":
-        recovered = recover_distance_from_lines(lines)
-        if recovered:
-            distance = recovered
-
     # === Extra time detection based on context ===
     for i, line in enumerate(lines):
         if time != "0:00":
@@ -79,8 +84,8 @@ def extract_summary(lines):
             seconds = int(match.group(2))
 
             if 5 <= minutes < 300:
-                next_line = lines[i+1].lower() if i+1 < len(lines) else ""
-                prev_line = lines[i-1].lower() if i-1 >= 0 else ""
+                next_line = lines[i + 1].lower() if i + 1 < len(lines) else ""
+                prev_line = lines[i - 1].lower() if i - 1 >= 0 else ""
                 context = f"{prev_line} {line_clean.lower()} {next_line}"
                 if "activity time" in context:
                     time = f"{minutes}:{seconds:02d}"
