@@ -48,18 +48,24 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
     parsed_summary_distance = parse_km(distance)
     parsed_ocr_distance = parse_km(ocr_distance_str)
 
+    # Use split distance if available and consistent
     if total_split_distance > 0:
-        # If summary distance is much smaller than the sum of splits, ignore it
         if parsed_summary_distance is None or parsed_summary_distance < total_split_distance - 0.2:
             distance = f"{total_split_distance:.2f} km"
         else:
             distance = f"{parsed_summary_distance:.2f} km"
 
+    # Otherwise, prefer OCR if it's more reasonable
+    elif parsed_ocr_distance is not None:
+        if parsed_summary_distance is None or parsed_ocr_distance > parsed_summary_distance:
+            distance = f"{parsed_ocr_distance:.2f} km"
+        else:
+            distance = f"{parsed_summary_distance:.2f} km"
+
+    # Fallback to whatever is available
     elif parsed_summary_distance is not None:
         distance = f"{parsed_summary_distance:.2f} km"
 
-    elif parsed_ocr_distance is not None:
-        distance = f"{parsed_ocr_distance:.2f} km"
 
 
 
