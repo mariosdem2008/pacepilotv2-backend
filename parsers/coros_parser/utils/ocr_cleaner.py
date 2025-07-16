@@ -1,5 +1,16 @@
 import re
 
+def clean_ocr_lines(text):
+    lines = text.splitlines()
+    cleaned_lines = []
+    for line in lines:
+        # Replace common OCR misreads
+        line = line.replace("’", "'").replace("“", '"').replace("”", '"').replace("°", "'").replace("", "'")
+        line = line.replace("O", "0").replace("o", "0")  # add lowercase 'o' too
+        line = line.replace("l", "1").replace("|", "1")
+        cleaned_lines.append(line)
+    return cleaned_lines
+
 def recover_distance_from_lines(lines):
     joined_text = " ".join(lines).lower()
 
@@ -41,42 +52,4 @@ def recover_distance_from_lines(lines):
     best = min(candidates, key=lambda x: abs(x - 4.9))
     return f"{best:.2f} km"
 
-if __name__ == "__main__":
-    ocr_text = [
-        ". o",
-        "9:08 7 XS ott) LTE ©)",
-        "| —_",
-        "< sage | Trac... ay.",
-        "o- Spe |",
-        "~ | ud",
-        "- () > [Z,",
-        "f : \\",
-        "( TsigiomAthliti gn",
-        "os Kentron a”",
-        "3D",
-        "; \\ ;",
-        ":",
-        "Pah 61 % 4) sw 20 km/h aa",
-        "Ocoros",
-        "4 e 9 / km .",
-        "Dj Marios ~",
-        "4 istance",
-        "‘ ’",
-        "I il I il",
-        ". 17:10” 328 /km 3:19 /km",
-        "\\ Activity Time Avg. Pace Best km @",
-        "*",
-        ": 186 bpm 322 kcal 1 1 7 % Excellent ~",
-        "Average Calories Efficiency @ r",
-        "' Heart Rate",
-        "J",
-        "87 TL Low r",
-        "Training Load @ 5",
-        ": ew >See Ek « EEA _",
-        "_ Pace (min/km) @ Best km 3'19\" Average 3'28\" b",
-        "é K",
-        "» 758\""
-    ]
 
-    result = recover_distance_from_lines(ocr_text)
-    print("Recovered distance:", result)
