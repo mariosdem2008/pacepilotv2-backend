@@ -35,11 +35,6 @@ def recover_distance_from_lines(lines):
     # New: Normalize multiple dots
     joined_text = re.sub(r"\.{2,}", ".", joined_text)
 
-    # Patterns to catch '4.97 km', '4 97 km', or even '4.9.7 km'
-    patterns = [
-        r"(\d{1,3}[.,]\d{1,2})\s*km",
-        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
-    ]
 
     best_dist = 0.0
 
