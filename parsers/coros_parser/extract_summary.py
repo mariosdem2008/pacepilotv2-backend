@@ -23,7 +23,7 @@ def extract_summary(lines):
         if distance == "Unknown":
             # Skip obvious speed indicators like km/h or pace
             if "km/h" not in line_clean.lower():
-                # First try with keywords
+                # First try: use clear distance labels
                 match = re.search(r"\b(?:distance|istance|stance)\b[^0-9]*?(\d{1,3})[.,](\d{1,2})\s*km", line_clean, re.IGNORECASE)
                 if match:
                     try:
@@ -33,16 +33,18 @@ def extract_summary(lines):
                     except:
                         pass
                 else:
-                    # Fallback: look for any floating number + 'km' in safe contexts
-                    match = re.search(r"\b(\d{1,3})[.,](\d{1,2})\s*km\b", line_clean)
+                    # Second try: generic float + 'km', but exclude 'km/h'
+                    match = re.search(r"(\d{1,3})[.,](\d{1,2})\s*km", line_clean)
                     if match:
-                        try:
-                            dist_val = float(f"{match.group(1)}.{match.group(2)}")
-                            # Exclude small values like 0.02, or common pace-like ranges
-                            if 0.5 < dist_val < 100:
-                                distance = f"{dist_val:.2f} km"
-                        except:
-                            pass
+                        after = line_clean[match.end():match.end() + 10].lower()
+                        if "km/h" not in after:
+                            try:
+                                dist_val = float(f"{match.group(1)}.{match.group(2)}")
+                                if 0.5 < dist_val < 100:
+                                    distance = f"{dist_val:.2f} km"
+                            except:
+                                pass
+
 
 
         if pace == "Unknown":
