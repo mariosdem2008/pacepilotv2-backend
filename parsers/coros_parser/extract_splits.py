@@ -1,50 +1,39 @@
 import re
-import hashlib
 
-def normalize_line_for_hash(line):
-    return re.sub(r'\s+', ' ', line.strip().lower())
+def sort_lines_by_prefix(lines):
+    def extract_prefix_number(line):
+        match = re.match(r"^\s*(\d+)", line)
+        return int(match.group(1)) if match else float('inf')
+    
+    return sorted(lines, key=extract_prefix_number)
 
 def extract_splits(lines):
+    lines = sort_lines_by_prefix(lines)
+
     parsed_lines = []
-    seen_hashes = set()
+    splits = []
     total_split_distance = 0.0
     split_index = 1
 
     for line in lines:
         line = line.strip()
-        norm_line = normalize_line_for_hash(line)
-        line_hash = hashlib.md5(norm_line.encode()).hexdigest()
-        
-        if line_hash in seen_hashes:
-            continue
-        seen_hashes.add(line_hash)
-
         try:
+            # Match with or without numeric prefix
             match = re.match(
-                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
+                r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--|°°)?['’](\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
                 line
             )
             if not match:
-                match = re.match(
-                    r"^\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--)?'(\d{2}|--)?(?:\"|”)?(?:\s*/km)?",
-                    line
-                )
-                if match:
-                    label = match.group(1)
-                    km = float(match.group(2).replace(",", ".")) if match.group(2) else 0.0
-                    time_str = match.group(3) or "0:00"
-                    pace_min = match.group(4) or "--"
-                    pace_sec = match.group(5) or "--"
-                else:
-                    continue
-            else:
-                label = match.group(2)
-                km = float(match.group(3).replace(",", ".")) if match.group(3) else 0.0
-                time_str = match.group(4) or "0:00"
-                pace_min = match.group(5) or "--"
-                pace_sec = match.group(6) or "--"
+                continue
 
-            pace_str = "-- /km" if pace_min == "--" or pace_sec == "--" else f"{pace_min}'{pace_sec}"
+            label = match.group(2)
+            km = float(match.group(3).replace(",", ".")) if match.group(3) else 0.0
+            time_str = match.group(4) or "0:00"
+            pace_min = match.group(5) or "--"
+            pace_sec = match.group(6) or "--"
+
+            # Normalize pace string
+            pace_str = "-- /km" if pace_min == "--" or pace_sec == "--" else f"{pace_min.replace('°', '')}'{pace_sec.replace('°', '')}"
 
             parsed_lines.append({
                 "label": label,
@@ -52,12 +41,11 @@ def extract_splits(lines):
                 "time": time_str,
                 "pace": pace_str
             })
+
         except:
             continue
 
-    splits = []
     current_split_entries = set()
-
     for i, entry in enumerate(parsed_lines):
         entry_key = (entry["label"], f"{entry['km']:.2f} km", entry["time"], entry["pace"])
         if entry_key not in current_split_entries:
@@ -72,7 +60,7 @@ def extract_splits(lines):
 
         total_split_distance += entry["km"]
 
-        # Start new split block after every Run
+        # Increment split on next "Run"
         if i + 1 < len(parsed_lines) and parsed_lines[i + 1]["label"] == "Run":
             split_index += 1
             current_split_entries.clear()
