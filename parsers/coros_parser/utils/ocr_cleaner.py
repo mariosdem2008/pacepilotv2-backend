@@ -41,6 +41,8 @@ def recover_distance_from_lines(lines):
         r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
     ]
 
+    best_dist = 0.0
+
     for pattern in patterns:
         matches = re.findall(pattern, joined_text)
         if matches:
@@ -48,10 +50,14 @@ def recover_distance_from_lines(lines):
                 dist_str = ".".join(part.strip() for part in m) if isinstance(m, tuple) else m.strip()
                 try:
                     dist = float(dist_str.replace(",", "."))
-                    if 0.5 < dist < 100:
-                        return f"{dist:.2f} km"
+                    if 0.5 < dist < 100 and dist > best_dist:
+                        best_dist = dist
                 except:
                     continue
+
+    if best_dist > 0:
+        return f"{best_dist:.2f} km"
+
     return None
 
 

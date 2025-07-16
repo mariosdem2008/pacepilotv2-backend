@@ -20,16 +20,19 @@ def extract_summary(lines):
                 time = match.group(1)
 
         if distance == "Unknown":
-            # Exclude "km/h" lines and require context around distance
             if "km/h" not in line_clean.lower():
-                match = re.search(r"\b(?:distance|istance|stance)\b.*?(\d{1,3})[.,](\d{1,2})\s*km", line_clean, re.IGNORECASE)
-                if match:
+                matches = re.findall(r"\b(?:distance|istance|stance)?[^0-9]{0,5}(\d{1,3})[.,](\d{1,2})\s*km", line_clean, re.IGNORECASE)
+                best_val = 0.0
+                for m in matches:
                     try:
-                        dist_val = float(f"{match.group(1)}.{match.group(2)}")
-                        if 0.5 < dist_val < 100:
-                            distance = f"{dist_val:.2f} km"
+                        val = float(f"{m[0]}.{m[1]}")
+                        if 0.5 < val < 100 and val > best_val:
+                            best_val = val
                     except:
-                        pass
+                        continue
+                if best_val > 0:
+                    distance = f"{best_val:.2f} km"
+
 
         if pace == "Unknown":
             match = re.search(r"Average\s+(\d{1,2})'(\d{2})", line_clean)
