@@ -20,30 +20,38 @@ def recover_distance_from_lines(lines):
     """
     joined_text = " ".join(lines).lower()
 
-    # Normalize common OCR misreads
-    joined_text = joined_text.replace("o", "0").replace("l", "1").replace("|", "1").replace("/", ".")
+    # Fix common OCR confusions in numbers
+    joined_text = (
+        joined_text.replace("e", ".")
+        .replace("o", "0")
+        .replace("l", "1")
+        .replace("|", "1")
+        .replace("/", ".")
+    )
 
-    # Fix 'e' or '/' between digits → '.'
-    joined_text = re.sub(r"(?<=\d)[e/](?=\d)", ".", joined_text)
-
-    # Remove km/h to avoid false matches
+    # === Prevent false matches from "km/h"
     joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
 
-    # Now find all km distances in flexible formats:
-    pattern = r"((?:\d+[., ]?)+)\s*km"
+    # New: Normalize multiple dots
+    joined_text = re.sub(r"\.{2,}", ".", joined_text)
 
-    matches = re.findall(pattern, joined_text)
-    for match in matches:
-        num_str = match.replace(" ", "").replace(",", ".")
-        num_str = re.sub(r"[^\d.]", "", num_str)
+    # Patterns to catch '4.97 km', '4 97 km', or even '4.9.7 km'
+    patterns = [
+        r"(\d{1,3}[.,]\d{1,2})\s*km",
+        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
+    ]
 
-        try:
-            dist = float(num_str)
-            if 0.5 < dist < 100:
-                return f"{dist:.2f} km"
-        except:
-            continue
-
+    for pattern in patterns:
+        matches = re.findall(pattern, joined_text)
+        if matches:
+            for m in matches:
+                dist_str = ".".join(part.strip() for part in m) if isinstance(m, tuple) else m.strip()
+                try:
+                    dist = float(dist_str.replace(",", "."))
+                    if 0.5 < dist < 100:
+                        return f"{dist:.2f} km"
+                except:
+                    continue
     return None
 
 

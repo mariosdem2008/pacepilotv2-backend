@@ -1,4 +1,3 @@
-#extract_summary.py
 import re
 from .utils.ocr_cleaner import recover_distance_from_lines  # ✅ MOVE TO THE TOP
 
@@ -21,10 +20,9 @@ def extract_summary(lines):
                 time = match.group(1)
 
         if distance == "Unknown":
-            # Skip obvious speed indicators like km/h or pace
+            # Exclude "km/h" lines and require context around distance
             if "km/h" not in line_clean.lower():
-                # First try with keywords
-                match = re.search(r"\b(?:distance|istance|stance)\b[^0-9]*?(\d{1,3})[.,](\d{1,2})\s*km", line_clean, re.IGNORECASE)
+                match = re.search(r"\b(?:distance|istance|stance)\b.*?(\d{1,3})[.,](\d{1,2})\s*km", line_clean, re.IGNORECASE)
                 if match:
                     try:
                         dist_val = float(f"{match.group(1)}.{match.group(2)}")
@@ -32,18 +30,6 @@ def extract_summary(lines):
                             distance = f"{dist_val:.2f} km"
                     except:
                         pass
-                else:
-                    # Fallback: look for any floating number + 'km' in safe contexts
-                    match = re.search(r"\b(\d{1,3})[.,](\d{1,2})\s*km\b", line_clean)
-                    if match:
-                        try:
-                            dist_val = float(f"{match.group(1)}.{match.group(2)}")
-                            # Exclude small values like 0.02, or common pace-like ranges
-                            if 0.5 < dist_val < 100:
-                                distance = f"{dist_val:.2f} km"
-                        except:
-                            pass
-
 
         if pace == "Unknown":
             match = re.search(r"Average\s+(\d{1,2})'(\d{2})", line_clean)
