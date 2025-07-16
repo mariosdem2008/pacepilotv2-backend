@@ -20,38 +20,32 @@ def recover_distance_from_lines(lines):
     """
     joined_text = " ".join(lines).lower()
 
-    # Fix common OCR confusions in numbers
-    joined_text = (
-        joined_text.replace("e", ".")
-        .replace("o", "0")
-        .replace("l", "1")
-        .replace("|", "1")
-        .replace("/", ".")
-    )
+    # Normalize common OCR confusions in numbers carefully
+    # Only replace in contexts where digits are involved
+    joined_text = re.sub(r"(?<=\d)[e]", ".", joined_text)  # only replace 'e' after digits
+    joined_text = joined_text.replace("o", "0").replace("l", "1").replace("|", "1").replace("/", ".")
 
-    # === Prevent false matches from "km/h"
+    # Remove km/h speeds (prevent false positives)
     joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
 
-    # New: Normalize multiple dots
+    # Normalize multiple dots or mixed separators
     joined_text = re.sub(r"\.{2,}", ".", joined_text)
+    joined_text = re.sub(r"[.,]\s*[.,]", ".", joined_text)
 
-    # Patterns to catch '4.97 km', '4 97 km', or even '4.9.7 km'
+    # Patterns to catch distances like '4.97 km', '4 97 km', '4.9.7 km', or '5 km'
     patterns = [
-        r"(\d{1,3}[.,]\d{1,2})\s*km",
-        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
+        r"(\d{1,3}[.,]?\d{0,2})\s*km"
     ]
 
     for pattern in patterns:
         matches = re.findall(pattern, joined_text)
-        if matches:
-            for m in matches:
-                dist_str = ".".join(part.strip() for part in m) if isinstance(m, tuple) else m.strip()
-                try:
-                    dist = float(dist_str.replace(",", "."))
-                    if 0.5 < dist < 100:
-                        return f"{dist:.2f} km"
-                except:
-                    continue
+        for m in matches:
+            dist_str = m.replace(",", ".").replace(" ", "")
+            try:
+                dist = float(dist_str)
+                if 0.5 < dist < 100:
+                    return f"{dist:.2f} km"
+            except:
+                continue
+
     return None
-
-
