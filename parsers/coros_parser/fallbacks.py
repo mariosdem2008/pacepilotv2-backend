@@ -57,10 +57,12 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
 
     # Otherwise, prefer OCR if it's more reasonable
     elif parsed_ocr_distance is not None:
-        if parsed_summary_distance is None or parsed_ocr_distance > parsed_summary_distance:
+        # Trust OCR if summary distance looks incorrect (e.g. too small)
+        if parsed_summary_distance is None or parsed_summary_distance < 0.7 * parsed_ocr_distance:
             distance = f"{parsed_ocr_distance:.2f} km"
         else:
             distance = f"{parsed_summary_distance:.2f} km"
+
 
     # Fallback to whatever is available
     elif parsed_summary_distance is not None:

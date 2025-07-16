@@ -56,7 +56,9 @@ def recover_distance_from_lines(lines):
                     continue
 
     if best_dist > 0:
+        print(f"[DEBUG] OCR recovered distance: {best_dist:.2f} km", flush=True)
         return f"{best_dist:.2f} km"
+
 
     return None
 
