@@ -1,7 +1,8 @@
 #fallbacks.py
 import re
-from utils import parse_time_to_sec, pace_to_seconds
-from utils.ocr_cleaner import recover_distance_from_lines
+from .utils import parse_time_to_sec, pace_to_seconds
+from .utils.ocr_cleaner import recover_distance_from_lines
+
 
 
 
