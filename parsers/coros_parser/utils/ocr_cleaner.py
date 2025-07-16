@@ -20,32 +20,39 @@ def recover_distance_from_lines(lines):
     """
     joined_text = " ".join(lines).lower()
 
-    # Normalize common OCR confusions in numbers carefully
-    # Only replace in contexts where digits are involved
-    joined_text = re.sub(r"(?<=\d)[e]", ".", joined_text)  # only replace 'e' after digits
+    # Normalize common OCR misreads
+    # Replace OCR confusions globally
     joined_text = joined_text.replace("o", "0").replace("l", "1").replace("|", "1").replace("/", ".")
-
-    # Remove km/h speeds (prevent false positives)
+    
+    # Replace 'e' with '.' if surrounded by digits or spaces (loose)
+    joined_text = re.sub(r"(?<=\d)\s*e\s*(?=\d)", ".", joined_text)
+    
+    # Remove km/h to avoid false matches
     joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
 
-    # Normalize multiple dots or mixed separators
-    joined_text = re.sub(r"\.{2,}", ".", joined_text)
-    joined_text = re.sub(r"[.,]\s*[.,]", ".", joined_text)
+    # Remove multiple dots or commas
+    joined_text = re.sub(r"[.,]{2,}", ".", joined_text)
 
-    # Patterns to catch distances like '4.97 km', '4 97 km', '4.9.7 km', or '5 km'
-    patterns = [
-        r"(\d{1,3}[.,]?\d{0,2})\s*km"
-    ]
+    # Now find all km distances in flexible formats:
+    # Allow numbers with digits, dots, spaces, or commas before 'km'
+    pattern = r"((?:\d+[., ]?)+)\s*km"
 
-    for pattern in patterns:
-        matches = re.findall(pattern, joined_text)
-        for m in matches:
-            dist_str = m.replace(",", ".").replace(" ", "")
-            try:
-                dist = float(dist_str)
-                if 0.5 < dist < 100:
-                    return f"{dist:.2f} km"
-            except:
-                continue
+    matches = re.findall(pattern, joined_text)
+    for match in matches:
+        # Remove spaces and commas, replace commas with dots
+        num_str = match.replace(" ", "").replace(",", ".")
+        # Remove any leftover non-digit/dot chars (like ®)
+        num_str = re.sub(r"[^\d.]", "", num_str)
+
+        try:
+            dist = float(num_str)
+            if 0.5 < dist < 100:
+                return f"{dist:.2f} km"
+        except:
+            continue
 
     return None
+
+
+
+
