@@ -5,6 +5,7 @@ from utils.ocr_cleaner import recover_distance_from_lines
 
 
 
+
 def apply_fallbacks(summary, splits, total_split_distance, lines, text):
     time = summary["time"]
     distance = summary["distance"]
