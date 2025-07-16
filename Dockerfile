@@ -1,5 +1,6 @@
 FROM python:3.11-slim
 
+# Install system dependencies for OpenCV and Tesseract
 RUN apt-get update && apt-get install -y \
     tesseract-ocr \
     libgl1 \
@@ -19,4 +20,5 @@ COPY . .
 
 EXPOSE 8000
 
-CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT}"]
+# 🚀 Use the port Railway gives us
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port $PORT"]
