@@ -93,9 +93,7 @@ def extract_splits(lines):
             time_str = match.group(3)
             pace_str = f"{match.group(4)}'{match.group(5)}"
 
-        if km == 0.0:
-            continue
-
+        # ✅ FIXED: keep 0.00 km lines — they are meaningful!
         parsed_lines.append({
             "label": label,
             "km": km,
