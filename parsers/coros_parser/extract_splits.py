@@ -63,13 +63,11 @@ def extract_splits(lines):
     is_lap_style = False
     is_run_rest_style = False
 
-    # Pattern 1: Run/Rest style
     run_rest_pattern = re.compile(
         r"^\s*(\d+)?\s*(Run|Rest)\s+([\d.,]+)\s*km\s+([\d:.]+)?\s*(\d{1,2}|--|°°)?['’°]?(?:(\d{2}|--))?(?:\"|”)?(?:\s*/km)?",
         re.IGNORECASE
     )
 
-    # Pattern 2: Lap style (loosened to allow non-standard time values)
     lap_pattern = re.compile(
         r"^\s*(\d+)\s+([\d.,]+)\s*km\s+([^\s]+(?: [^\s]+)?)\s+(\d{1,2})['’](\d{2})",
         re.IGNORECASE
@@ -96,6 +94,10 @@ def extract_splits(lines):
             time_str = match.group(3)
             pace_str = f"{match.group(4)}'{match.group(5)}"
 
+        # Optionally skip 0.00 km entries
+        if km == 0.0:
+            continue
+
         parsed_lines.append({
             "label": label,
             "km": km,
@@ -117,10 +119,11 @@ def extract_splits(lines):
             })
             current_split_entries.add(entry_key)
 
-            if is_lap_style:
+            # INCREMENT only if this is a Run and in Run/Rest style
+            if is_run_rest_style and entry["label"].lower() == "run":
                 split_index += 1
-            elif is_run_rest_style and entry["label"].lower() == "run":
-                split_index += 1
+            elif is_lap_style:
+                split_index += 1  # every Lap gets unique split
 
         total_split_distance += entry["km"]
 
