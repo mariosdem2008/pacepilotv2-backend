@@ -113,14 +113,14 @@ def extract_splits(lines):
             })
             split_index += 1
 
-        # elif entry["label"] == "Rest":
-        #     splits.append({
-        #         "split": split_index,
-        #         "label": entry["label"],
-        #         "km": f"{entry['km']:.2f} km",
-        #         "time": entry["time"],
-        #         "pace": entry["pace"]
-        #     })
+        elif entry["label"] == "Rest":
+            splits.append({
+                "split": split_index,
+                "label": entry["label"],
+                "km": f"{entry['km']:.2f} km",
+                "time": entry["time"],
+                "pace": entry["pace"]
+            })
 
 
 def parse_coros_ocr(lines):
