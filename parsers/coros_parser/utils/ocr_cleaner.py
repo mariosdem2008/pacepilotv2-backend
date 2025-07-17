@@ -20,7 +20,7 @@ def recover_distance_from_lines(lines):
     """
     joined_text = " ".join(lines).lower()
 
-    # Fix common OCR confusions in numbers
+    # Fix common OCR confusions
     joined_text = (
         joined_text.replace("e", ".")
         .replace("o", "0")
@@ -29,16 +29,16 @@ def recover_distance_from_lines(lines):
         .replace("/", ".")
     )
 
-    # === Prevent false matches from "km/h"
+    # Remove km/h to avoid false positives
     joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
-
-    # New: Normalize multiple dots
     joined_text = re.sub(r"\.{2,}", ".", joined_text)
 
-    # Patterns to catch '4.97 km', '4 97 km', or even '4.9.7 km'
+    # Merge number parts like "5 e 3 3" → "5.33"
+    joined_text = re.sub(r"(\d)\s*e\s*(\d)\s*(\d)", r"\1.\2\3", joined_text)
+
     patterns = [
         r"(\d{1,3}[.,]\d{1,2})\s*km",
-        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
+        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km",
     ]
 
     best_dist = 0.0
@@ -47,7 +47,10 @@ def recover_distance_from_lines(lines):
         matches = re.findall(pattern, joined_text)
         if matches:
             for m in matches:
-                dist_str = ".".join(part.strip() for part in m) if isinstance(m, tuple) else m.strip()
+                if isinstance(m, tuple):
+                    dist_str = ".".join(part.strip() for part in m)
+                else:
+                    dist_str = m.strip()
                 try:
                     dist = float(dist_str.replace(",", "."))
                     if 0.5 < dist < 100 and dist > best_dist:
@@ -59,7 +62,5 @@ def recover_distance_from_lines(lines):
         print(f"[DEBUG] OCR recovered distance: {best_dist:.2f} km", flush=True)
         return f"{best_dist:.2f} km"
 
-
     return None
-
 
