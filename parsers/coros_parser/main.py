@@ -5,7 +5,7 @@ from .extract_summary import extract_summary
 from .extract_splits import extract_splits
 from .fallbacks import apply_fallbacks
 from .utils.ocr_cleaner import clean_ocr_lines
-
+from .stride_parser import parse_cadence_and_stride
 
 def coros_parser(image):
     raw_text = pytesseract.image_to_string(image, config='--psm 6')
@@ -20,11 +20,19 @@ def coros_parser(image):
     summary = extract_summary(lines)
     splits, total_split_distance = extract_splits(lines)
 
+    # Parse cadence and stride length
+    cadence_avg, cadence_max, stride_length_avg = parse_cadence_and_stride(lines)
+
     # Pass cleaned lines and raw_text if needed to fallbacks
     final_result = apply_fallbacks(summary, splits, total_split_distance, lines, raw_text)
 
     final_result["splits"] = splits
     final_result["hr_zones"] = hr_zones if hr_zones else None
+
+    # Add cadence and stride to final result
+    final_result["cadence_avg"] = cadence_avg
+    final_result["cadence_max"] = cadence_max
+    final_result["stride_length_avg"] = stride_length_avg
 
     print("\n===== FINAL PARSED WORKOUT DATA =====", flush=True)
     print(json.dumps(final_result, indent=2), flush=True)
