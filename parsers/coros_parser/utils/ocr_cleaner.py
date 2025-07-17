@@ -25,18 +25,21 @@ def recover_distance_from_lines(lines):
         joined_text.replace("o", "0")
         .replace("l", "1")
         .replace("|", "1")
-        .replace("/", ".")
     )
 
     # Remove km/h to avoid false positives
     joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
     joined_text = re.sub(r"\.{2,}", ".", joined_text)
 
-    # === Special handling for weird OCR formats like "5 e 3 3 km"
-    # Convert patterns like "5 e 3 3 km" → "5.33 km"
+    # Handle OCR like "4 e 9 / km" → "4.90 km"
+    joined_text = re.sub(r"(\d)\s*[eE]\s*(\d)\s*/\s*km", r"\1.\2" + "0 km", joined_text)
+
+    # Also handle "5 e 3 3 km" → "5.33 km"
     joined_text = re.sub(r"(\d)\s*[eE]\s*(\d)\s*(\d)\s*km", r"\1.\2\3 km", joined_text)
 
-    # Patterns to catch valid decimal distances
+    # Clean up malformed decimal numbers like "4.9.0"
+    joined_text = re.sub(r"(\d)\.(\d)\.(\d)", r"\1.\2\3", joined_text)
+
     patterns = [
         r"(\d{1,3}[.,]\d{1,2})\s*km",
         r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
