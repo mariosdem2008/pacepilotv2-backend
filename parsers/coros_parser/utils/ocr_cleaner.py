@@ -22,8 +22,7 @@ def recover_distance_from_lines(lines):
 
     # Fix common OCR confusions
     joined_text = (
-        joined_text.replace("e", ".")
-        .replace("o", "0")
+        joined_text.replace("o", "0")
         .replace("l", "1")
         .replace("|", "1")
         .replace("/", ".")
@@ -33,12 +32,14 @@ def recover_distance_from_lines(lines):
     joined_text = re.sub(r"\d+\s*[.,]?\s*\d*\s*km/h", "", joined_text)
     joined_text = re.sub(r"\.{2,}", ".", joined_text)
 
-    # Merge number parts like "5 e 3 3" → "5.33"
-    joined_text = re.sub(r"(\d)\s*e\s*(\d)\s*(\d)", r"\1.\2\3", joined_text)
+    # === Special handling for weird OCR formats like "5 e 3 3 km"
+    # Convert patterns like "5 e 3 3 km" → "5.33 km"
+    joined_text = re.sub(r"(\d)\s*[eE]\s*(\d)\s*(\d)\s*km", r"\1.\2\3 km", joined_text)
 
+    # Patterns to catch valid decimal distances
     patterns = [
         r"(\d{1,3}[.,]\d{1,2})\s*km",
-        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km",
+        r"(\d{1,3})\s*[.,]?\s*(\d{1,2})\s*km"
     ]
 
     best_dist = 0.0
@@ -63,4 +64,3 @@ def recover_distance_from_lines(lines):
         return f"{best_dist:.2f} km"
 
     return None
-

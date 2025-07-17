@@ -36,6 +36,8 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
 
     # fallback distance detection with your cleaner helper
     ocr_distance_str = recover_distance_from_lines(lines)
+    print(f"[DEBUG] Fallback OCR distance: {ocr_distance_str}")
+
 
     def parse_km(d):
         try:
