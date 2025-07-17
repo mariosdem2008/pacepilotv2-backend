@@ -64,7 +64,24 @@ def extract_summary(lines):
         if recovered:
             distance = recovered
 
+    # === Extra time detection based on context ===
+    for i, line in enumerate(lines):
+        if time != "0:00":
+            break
 
+        line_clean = line.strip()
+        match = re.search(r"\b(\d{1,2}):(\d{2})\b", line_clean)
+        if match:
+            minutes = int(match.group(1))
+            seconds = int(match.group(2))
+
+            if 5 <= minutes < 300:
+                next_line = lines[i+1].lower() if i+1 < len(lines) else ""
+                prev_line = lines[i-1].lower() if i-1 >= 0 else ""
+                context = f"{prev_line} {line_clean.lower()} {next_line}"
+                if "activity time" in context:
+                    time = f"{minutes}:{seconds:02d}"
+                    break
 
     return {
         "time": time,
