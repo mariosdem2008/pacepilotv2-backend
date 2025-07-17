@@ -1,5 +1,6 @@
 import re
-from .utils.ocr_cleaner import recover_distance_from_lines
+from .utils.ocr_cleaner import recover_distance_from_lines  # ✅ MOVE TO THE TOP
+
 
 
 def extract_summary(lines):
@@ -10,8 +11,21 @@ def extract_summary(lines):
     avg_hr = None
     max_hr = None
 
+# Inside extract_summary
+
     for line in lines:
         line_clean = line.replace("’", "'").replace("`", "'")
+
+        # --- STRONGER TIME EXTRACTION ---
+        if time == "0:00":
+            if re.search(r"\b(activity\s*time|time)\b", line_clean.lower()):
+                match = re.search(r"(\d{1,2}):(\d{2})", line_clean)
+                if match:
+                    minutes = int(match.group(1))
+                    seconds = int(match.group(2))
+                    if 5 <= minutes < 300:
+                        time = f"{minutes}:{seconds:02d}"
+
 
         if distance == "Unknown":
             if "km/h" not in line_clean.lower():
@@ -26,6 +40,7 @@ def extract_summary(lines):
                         continue
                 if best_val > 0:
                     distance = f"{best_val:.2f} km"
+
 
         if pace == "Unknown":
             match = re.search(r"Average\s+(\d{1,2})'(\d{2})", line_clean)
@@ -49,29 +64,7 @@ def extract_summary(lines):
         if recovered:
             distance = recovered
 
-    # === Extra time detection using loose heuristics ===
-    if time == "0:00":
-        for i, line in enumerate(lines):
-            line_clean = line.strip()
 
-            match = re.search(r"\b(\d{1,2}):(\d{2})\b", line_clean)
-            if match:
-                minutes = int(match.group(1))
-                seconds = int(match.group(2))
-
-                if 5 <= minutes < 300:
-                    next_line = lines[i+1].lower() if i+1 < len(lines) else ""
-                    prev_line = lines[i-1].lower() if i-1 >= 0 else ""
-                    context = f"{prev_line} {line_clean.lower()} {next_line}"
-
-                    if "activity" in context or "time" in context or "pace" in context or "kcal" in context:
-                        time = f"{minutes}:{seconds:02d}"
-                        break
-
-                    # Fallback: trust first large time
-                    if minutes >= 10:
-                        time = f"{minutes}:{seconds:02d}"
-                        break
 
     return {
         "time": time,
