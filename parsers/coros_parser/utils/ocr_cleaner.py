@@ -32,10 +32,18 @@ def recover_distance_from_lines(lines):
     joined_text = re.sub(r"\.{2,}", ".", joined_text)
 
     # Handle OCR like "4 e 9 / km" → "4.90 km"
-    joined_text = re.sub(r"(\d)\s*[eE]\s*(\d)\s*/\s*km", r"\1.\2" + "0 km", joined_text)
+    joined_text = re.sub(
+        r"(\d)\s*[eE]\s*(\d)\s*/\s*km",
+        lambda m: f"{m.group(1)}.{m.group(2)}0 km",
+        joined_text,
+    )
 
     # Also handle "5 e 3 3 km" → "5.33 km"
-    joined_text = re.sub(r"(\d)\s*[eE]\s*(\d)\s*(\d)\s*km", r"\1.\2\3 km", joined_text)
+    joined_text = re.sub(
+        r"(\d)\s*[eE]\s*(\d)\s*(\d)\s*km",
+        lambda m: f"{m.group(1)}.{m.group(2)}{m.group(3)} km",
+        joined_text,
+    )
 
     # Clean up malformed decimal numbers like "4.9.0"
     joined_text = re.sub(r"(\d)\.(\d)\.(\d)", r"\1.\2\3", joined_text)
