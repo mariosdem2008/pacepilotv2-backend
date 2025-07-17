@@ -38,8 +38,6 @@ def extract_hr_zones(lines):
                 "percent": percent,
                 "hr_range": hr_range
             }
-            print(f"[DEBUG] Parsed HR zone: {zone} → {hr_zones[zone]}")
-        else:
-            print(f"[DEBUG] No HR zone match in line: {raw_line}")
+            
 
     return hr_zones or None
