@@ -72,21 +72,29 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
 
         # Final fallback: try to recover time from lines with strong contextual clues
     if time == "0:00":
+        candidate_times = []
+        time_pattern = re.compile(r"\b(\d{1,3}):(\d{2})\b")
+
         for i, line in enumerate(lines):
-            line_clean = line.strip()
-            match = re.search(r"\b(\d{1,2}):(\d{2})\b", line_clean)
-            if match:
-                minutes = int(match.group(1))
-                seconds = int(match.group(2))
-                if 5 <= minutes < 300:
-                    next_line = lines[i+1].lower() if i+1 < len(lines) else ""
+            matches = time_pattern.findall(line)
+            for (m, s) in matches:
+                minutes = int(m)
+                seconds = int(s)
+                # Accept times between 5 minutes and 3 hours (180 min)
+                if 5 <= minutes <= 180 and 0 <= seconds < 60:
                     prev_line = lines[i-1].lower() if i-1 >= 0 else ""
-                    context = f"{prev_line} {line_clean.lower()} {next_line}"
-                    # Stronger condition to avoid wrong matches like 22:37 from "Recovery"
-                    if any(keyword in context for keyword in ["activity time", "activity", "time", "duration", "avg pace", "effort"]):
-                        time = f"{minutes}:{seconds:02d}"
-                        print(f"[DEBUG] Fallback recovered time: {time}")
-                        break
+                    next_line = lines[i+1].lower() if i+1 < len(lines) else ""
+                    line_lower = line.lower()
+                    context = f"{prev_line} {line_lower} {next_line}"
+                    # Keywords indicating activity time
+                    if any(k in context for k in ["activity time", "activity", "duration", "effort", "time"]):
+                        candidate_times.append((minutes*60 + seconds, f"{minutes}:{seconds:02d}"))
+
+        if candidate_times:
+            candidate_times.sort(reverse=True)  # pick longest time
+            time = candidate_times[0][1]
+            print(f"[DEBUG] Fallback recovered time: {time}")
+
 
 
 
