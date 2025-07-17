@@ -70,6 +70,23 @@ def apply_fallbacks(summary, splits, total_split_distance, lines, text):
     elif parsed_summary_distance is not None:
         distance = f"{parsed_summary_distance:.2f} km"
 
+        # Final fallback: try to recover time from lines with strong contextual clues
+    if time == "0:00":
+        for i, line in enumerate(lines):
+            line_clean = line.strip()
+            match = re.search(r"\b(\d{1,2}):(\d{2})\b", line_clean)
+            if match:
+                minutes = int(match.group(1))
+                seconds = int(match.group(2))
+                if 5 <= minutes < 300:
+                    next_line = lines[i+1].lower() if i+1 < len(lines) else ""
+                    prev_line = lines[i-1].lower() if i-1 >= 0 else ""
+                    context = f"{prev_line} {line_clean.lower()} {next_line}"
+                    # Stronger condition to avoid wrong matches like 22:37 from "Recovery"
+                    if any(keyword in context for keyword in ["activity time", "activity", "time", "duration", "avg pace", "effort"]):
+                        time = f"{minutes}:{seconds:02d}"
+                        print(f"[DEBUG] Fallback recovered time: {time}")
+                        break
 
 
 

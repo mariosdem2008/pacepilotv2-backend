@@ -11,21 +11,13 @@ def extract_summary(lines):
     avg_hr = None
     max_hr = None
 
-# Inside extract_summary
-
     for line in lines:
         line_clean = line.replace("’", "'").replace("`", "'")
 
-        # --- STRONGER TIME EXTRACTION ---
         if time == "0:00":
-            if re.search(r"\b(activity\s*time|time)\b", line_clean.lower()):
-                match = re.search(r"(\d{1,2}):(\d{2})", line_clean)
-                if match:
-                    minutes = int(match.group(1))
-                    seconds = int(match.group(2))
-                    if 5 <= minutes < 300:
-                        time = f"{minutes}:{seconds:02d}"
-
+            match = re.search(r"\bTime\b.*?(\d{1,2}:\d{2})", line_clean, re.IGNORECASE)
+            if match:
+                time = match.group(1)
 
         if distance == "Unknown":
             if "km/h" not in line_clean.lower():
