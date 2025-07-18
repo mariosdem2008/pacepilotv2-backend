@@ -1,18 +1,5 @@
-def normalize_ocr_errors(text: str) -> str:
-    # Fix common OCR errors (letters to digits)
-    replacements = {
-        'l': '1',
-        'I': '1',
-        '|': '1',
-        'o': '0',
-        'O': '0',
-        's': '5',
-        'S': '5',
-        # Add more if needed
-    }
-    for k, v in replacements.items():
-        text = text.replace(k, v)
-    return text
+import re
+from typing import Optional, List, Dict
 
 def parse_workout_metrics(lines: List[str]) -> Dict[str, Optional[int]]:
     data = {
@@ -28,12 +15,19 @@ def parse_workout_metrics(lines: List[str]) -> Dict[str, Optional[int]]:
         "elevation_avg": None,
     }
 
-    for line in lines:
-        line = line.strip()
-        clean_line = normalize_ocr_errors(line)
-        line_lower = clean_line.lower()
+    def normalize_ocr(text: str) -> str:
+        return (
+            text.replace("0", "o")
+                .replace("1", "l")
+                .replace("5", "s")
+                .replace("—", "-")
+        )
 
-        print(f"[DEBUG] Normalized LINE: {clean_line}")
+    for line in lines:
+        line = normalize_ocr(line.strip())
+        line_lower = line.lower()
+
+        print(f"[DEBUG] LINE: {line}")
 
         # Cadence
         if "cadence" in line_lower:
@@ -48,7 +42,7 @@ def parse_workout_metrics(lines: List[str]) -> Dict[str, Optional[int]]:
             if match:
                 data["stride_length_avg"] = int(match.group(1))
 
-        # Running Power
+        # Running Power (handle "P0wer" as "Power")
         if "running power" in line_lower:
             match = re.search(r"max[^0-9]*(\d+)[^0-9]+average[^0-9]*(\d+)", line_lower)
             if match:
@@ -60,7 +54,7 @@ def parse_workout_metrics(lines: List[str]) -> Dict[str, Optional[int]]:
                     data["running_power_avg"] = int(match.group(1))
                     data["running_power_max"] = int(match.group(2))
 
-        # Elevation Gain / Loss
+        # Elevation Gain / Loss (OCR "E1evati0n", "L0ss")
         if "elevation" in line_lower and ("gain" in line_lower or "loss" in line_lower):
             match = re.search(r"gain[^0-9]*(\d+)[^\d]+loss[^0-9]*(\d+)", line_lower)
             if match:
