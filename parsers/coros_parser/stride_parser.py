@@ -15,12 +15,23 @@ def parse_workout_metrics(lines: List[str]) -> Dict[str, Optional[int]]:
         "elevation_avg": None,
     }
 
+    def normalize_ocr_errors(text: str) -> str:
+        return (
+            text.replace('0', 'o')
+                .replace('1', 'l')
+                .replace('5', 's')  # optional: 'Loss' → 'L0ss'
+                .replace('P0wer', 'Power')
+                .replace('E1evati0n', 'Elevation')
+                .replace('L0ss', 'Loss')
+                .replace('t', 't')  # might not always be a mistake
+        )
+
     for line in lines:
         line = line.strip()
-        line_lower = line.lower()
+        clean_line = normalize_ocr_errors(line)
+        line_lower = clean_line.lower()
 
-        # Debug print to inspect what is passed in
-        print(f"[DEBUG] LINE: {line}")
+        print(f"[DEBUG] LINE: {clean_line}")
 
         # Cadence
         if "cadence" in line_lower:
