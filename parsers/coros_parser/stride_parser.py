@@ -48,9 +48,6 @@ def parse_workout_metrics(lines: List[str]) -> Dict[str, Optional[int]]:
         fixed_line = fix_common_ocr_errors(raw_line)
         line_lower = fixed_line.lower()
 
-        print(f"[DEBUG] LINE: {raw_line}")
-        print(f"[DEBUG] FIXED: {fixed_line}")
-
         # Cadence
         if "cadence" in line_lower:
             match = re.search(r"max[^0-9]*(\d+)[^0-9]+average[^0-9]*(\d+)", line_lower)
