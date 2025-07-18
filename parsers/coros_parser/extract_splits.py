@@ -54,8 +54,6 @@ def extract_summary_info(text):
     }
 
 def extract_splits(lines):
-    lines = reorder_lines_by_min_prefix(lines)
-
     parsed_lines = []
     splits = []
     total_split_distance = 0.0
@@ -72,7 +70,14 @@ def extract_splits(lines):
         re.IGNORECASE
     )
 
-    for line in lines:
+    # ✅ First: filter lines that match either pattern
+    split_candidate_lines = [line for line in lines if run_rest_pattern.match(line.strip()) or lap_pattern.match(line.strip())]
+
+    # ✅ Then reorder them based on prefix number
+    split_candidate_lines = reorder_lines_by_min_prefix(split_candidate_lines)
+
+    # ✅ Now parse them
+    for line in split_candidate_lines:
         line = line.strip()
         match = run_rest_pattern.match(line)
         if match:
@@ -93,7 +98,6 @@ def extract_splits(lines):
             time_str = match.group(3)
             pace_str = f"{match.group(4)}'{match.group(5)}"
 
-        # ✅ FIXED: keep 0.00 km lines — they are meaningful!
         parsed_lines.append({
             "label": label,
             "km": km,
@@ -101,6 +105,7 @@ def extract_splits(lines):
             "pace": pace_str
         })
 
+    # ✅ Now assign split numbers sequentially
     current_split_entries = set()
     split_index = 1
     next_split_index = 1
@@ -129,6 +134,7 @@ def extract_splits(lines):
         total_split_distance += entry["km"]
 
     return splits, total_split_distance
+
 
 def parse_coros_ocr(lines):
     splits, total_split_distance = extract_splits(lines)
