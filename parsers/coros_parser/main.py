@@ -1,6 +1,5 @@
 import pytesseract
 import json
-from .extract_hr_zones import extract_hr_zones
 from .extract_summary import extract_summary
 from .extract_splits import extract_splits
 from .fallbacks import apply_fallbacks
@@ -16,7 +15,6 @@ def coros_parser(image):
     # Clean OCR text before splitting
     lines = clean_ocr_lines(raw_text)
 
-    hr_zones = extract_hr_zones(lines)
     summary = extract_summary(lines)
     splits, total_split_distance = extract_splits(lines)
 
@@ -27,7 +25,6 @@ def coros_parser(image):
     final_result = apply_fallbacks(summary, splits, total_split_distance, lines, raw_text)
 
     final_result["splits"] = splits
-    final_result["hr_zones"] = hr_zones if hr_zones else None
 
     # Add parsed metrics to final result
     final_result.update(metrics)
