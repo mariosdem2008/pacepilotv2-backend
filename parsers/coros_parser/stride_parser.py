@@ -17,42 +17,46 @@ def parse_workout_metrics(lines: List[str]) -> Dict[str, Optional[int]]:
 
     for line in lines:
         line = line.strip()
+        line_lower = line.lower()
+
+        # Debug print to inspect what is passed in
+        print(f"[DEBUG] LINE: {line}")
 
         # Cadence
-        if "Cadence" in line:
-            match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
+        if "cadence" in line_lower:
+            match = re.search(r"max[^0-9]*(\d+)[^0-9]+average[^0-9]*(\d+)", line_lower)
             if match:
                 data["cadence_max"] = int(match.group(1))
                 data["cadence_avg"] = int(match.group(2))
 
         # Stride Length
-        if "Stride Length" in line:
-            match = re.search(r"Average\s+(\d+)", line)
+        if "stride length" in line_lower:
+            match = re.search(r"average[^0-9]*(\d+)", line_lower)
             if match:
                 data["stride_length_avg"] = int(match.group(1))
 
-        # Running Power (handle @ and flexible spacing)
-        if "Running Power" in line:
-            match = re.search(r"Max\s+(\d+)\s+Average\s+(\d+)", line)
-            if not match:
-                match = re.search(r"Average\s+(\d+)\s+Max\s+(\d+)", line)
+        # Running Power
+        if "running power" in line_lower:
+            match = re.search(r"max[^0-9]*(\d+)[^0-9]+average[^0-9]*(\d+)", line_lower)
+            if match:
+                data["running_power_max"] = int(match.group(1))
+                data["running_power_avg"] = int(match.group(2))
+            else:
+                match = re.search(r"average[^0-9]*(\d+)[^0-9]+max[^0-9]*(\d+)", line_lower)
                 if match:
                     data["running_power_avg"] = int(match.group(1))
                     data["running_power_max"] = int(match.group(2))
-            else:
-                data["running_power_max"] = int(match.group(1))
-                data["running_power_avg"] = int(match.group(2))
 
-        # Elevation Gain / Loss (handle messy separators)
-        if "Elevation" in line and ("Gain" in line or "Loss" in line):
-            match = re.search(r"Gain\s+(\d+)\D+Loss\s+(\d+)", line)
+        # Elevation Gain / Loss
+        if "elevation" in line_lower and ("gain" in line_lower or "loss" in line_lower):
+            match = re.search(r"gain[^0-9]*(\d+)[^\d]+loss[^0-9]*(\d+)", line_lower)
             if match:
                 data["elevation_gain"] = int(match.group(1))
                 data["elevation_loss"] = int(match.group(2))
 
-        # Elevation Min/Max/Avg
-        if "Max" in line and "Min" in line and "Average" in line:
-            match = re.search(r"Max\s+(\d+)\s+Min\s+(\d+)\s+Average\s+(\d+)", line)
+        # Elevation Max / Min / Avg
+        if "max" in line_lower and "min" in line_lower and "average" in line_lower:
+            match = re.search(r"max[^0-9]*(\d+)[^\d]+min[^0-9]*(\d+)[^\d]+average[^0-9]*(\d+)", line_lower)
             if match:
                 data["elevation_max"] = int(match.group(1))
                 data["elevation_min"] = int(match.group(2))
