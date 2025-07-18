@@ -149,3 +149,4 @@ def parse_coros_ocr(lines):
         }
     else:
         return extract_summary_info(lines)
+ 
